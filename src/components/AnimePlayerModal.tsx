@@ -187,6 +187,16 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
 
   const activeStreamSrc = getActiveStreamUrl();
 
+  // Convert stream URL into proxied embed URL to bypass sandbox/document.domain iframe restrictions
+  const getEmbedStreamUrl = (url: string | null): string | null => {
+    if (!url) return null;
+    if (url.startsWith('/') || url.startsWith('blob:')) return url;
+    if (url.includes('youtube') || url.includes('youtu.be')) return url;
+    return `/api/stream-embed?url=${encodeURIComponent(url)}`;
+  };
+
+  const activeEmbedSrc = getEmbedStreamUrl(activeStreamSrc);
+
   // Helper lists for servers & qualities
   const availableQualities = episodeDetail?.mirrors?.map((m) => m.quality) || ['360p', '480p', '720p', '1080p'];
   const currentQualityObject = episodeDetail?.mirrors?.find((m) => m.quality === selectedMirrorQuality) || episodeDetail?.mirrors?.[0];
@@ -258,8 +268,8 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
                     />
                   ) : (
                     <iframe
-                      key={activeStreamSrc}
-                      src={activeStreamSrc}
+                      key={activeEmbedSrc || activeStreamSrc}
+                      src={activeEmbedSrc || activeStreamSrc}
                       title={selectedEpisode?.title || anime.title}
                       className="w-full h-full border-0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
