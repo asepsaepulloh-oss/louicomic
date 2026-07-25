@@ -15,10 +15,13 @@ import {
   Sparkles,
   Info,
   CheckCircle2,
+  ExternalLink,
 } from 'lucide-react';
-import { AnimeItem, AnimeDetailData, AnimeEpisodeItem } from '../types/anime';
+import { AnimeItem, AnimeDetailData, AnimeEpisodeItem, EpisodeDetailData } from '../types/anime';
 import {
   fetchAnimeDetailApi,
+  fetchEpisodeDetailApi,
+  extractStreamSrc,
   isAnimeBookmarked,
   saveAnimeBookmark,
   removeAnimeBookmark,
@@ -32,12 +35,13 @@ interface AnimePlayerModalProps {
 
 export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClose }) => {
   const [detail, setDetail] = useState<AnimeDetailData | null>(null);
+  const [episodeDetail, setEpisodeDetail] = useState<EpisodeDetailData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingEpisode, setLoadingEpisode] = useState<boolean>(false);
   const [selectedEpisode, setSelectedEpisode] = useState<AnimeEpisodeItem | null>(null);
-  const [serverQuality, setServerQuality] = useState<string>('720p');
-  const [selectedServer, setSelectedServer] = useState<string>('Server Utama (HD)');
+  const [selectedMirrorQuality, setSelectedMirrorQuality] = useState<string>('720p');
+  const [selectedProviderName, setSelectedProviderName] = useState<string>('');
   const [bookmarked, setBookmarked] = useState<boolean>(false);
-  const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   useEffect(() => {
@@ -51,12 +55,43 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
       .then((data) => {
         setDetail(data);
         if (data.episodes && data.episodes.length > 0) {
-          setSelectedEpisode(data.episodes[0]); // default to Episode 1 or latest
+          setSelectedEpisode(data.episodes[0]); // default to first episode
         }
       })
       .catch((err) => console.error('Failed to load anime detail:', err))
       .finally(() => setLoading(false));
   }, [anime]);
+
+  // Fetch episode details (mirrors, stream URL, downloads) when selectedEpisode changes
+  useEffect(() => {
+    if (!selectedEpisode) return;
+    setLoadingEpisode(true);
+
+    fetchEpisodeDetailApi(selectedEpisode.slug)
+      .then((data) => {
+        setEpisodeDetail(data);
+        if (data?.mirrors && data.mirrors.length > 0) {
+          const firstMirror = data.mirrors[0];
+          setSelectedMirrorQuality(firstMirror.quality);
+          if (firstMirror.providers && firstMirror.providers.length > 0) {
+            const defProv = firstMirror.providers.find((p) => p.is_default) || firstMirror.providers[0];
+            setSelectedProviderName(defProv.name);
+          }
+        }
+      })
+      .catch((err) => console.error('Failed to fetch episode detail:', err))
+      .finally(() => setLoadingEpisode(false));
+  }, [selectedEpisode]);
+
+  // When selected mirror quality changes, set default provider for that quality
+  useEffect(() => {
+    if (!episodeDetail?.mirrors) return;
+    const matchQual = episodeDetail.mirrors.find((m) => m.quality === selectedMirrorQuality) || episodeDetail.mirrors[0];
+    if (matchQual && matchQual.providers && matchQual.providers.length > 0) {
+      const defProv = matchQual.providers.find((p) => p.is_default) || matchQual.providers[0];
+      setSelectedProviderName(defProv.name);
+    }
+  }, [selectedMirrorQuality, episodeDetail]);
 
   // Record history when episode is selected
   useEffect(() => {
@@ -94,15 +129,32 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
   };
 
   const handleNextEpisode = () => {
+    if (episodeDetail?.next_episode) {
+      const nextEp = episodeDetail.next_episode;
+      setSelectedEpisode({
+        title: nextEp.title,
+        slug: nextEp.slug,
+        episode_number: 0,
+      });
+      return;
+    }
     if (!detail?.episodes || !selectedEpisode) return;
     const currentIndex = detail.episodes.findIndex((e) => e.slug === selectedEpisode.slug);
-    // Note: episodes are sorted descending or ascending
     if (currentIndex > 0) {
       setSelectedEpisode(detail.episodes[currentIndex - 1]);
     }
   };
 
   const handlePrevEpisode = () => {
+    if (episodeDetail?.previous_episode) {
+      const prevEp = episodeDetail.previous_episode;
+      setSelectedEpisode({
+        title: prevEp.title,
+        slug: prevEp.slug,
+        episode_number: 0,
+      });
+      return;
+    }
     if (!detail?.episodes || !selectedEpisode) return;
     const currentIndex = detail.episodes.findIndex((e) => e.slug === selectedEpisode.slug);
     if (currentIndex < detail.episodes.length - 1) {
@@ -110,16 +162,39 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
     }
   };
 
-  // Get video stream source URL based on selected server and quality
-  const getVideoStreamUrl = (server: string, quality: string) => {
-    if (server === 'Server Fast 2') {
-      return 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4';
+  // Resolve current active video stream iframe or video URL
+  const getActiveStreamUrl = (): string | null => {
+    if (!episodeDetail) return null;
+
+    if (episodeDetail.mirrors && episodeDetail.mirrors.length > 0) {
+      const qual = episodeDetail.mirrors.find((m) => m.quality === selectedMirrorQuality) || episodeDetail.mirrors[0];
+      if (qual && qual.providers && qual.providers.length > 0) {
+        const prov = qual.providers.find((p) => p.name === selectedProviderName) || qual.providers[0];
+        if (prov && prov.data_content) {
+          const src = extractStreamSrc(prov.data_content);
+          if (src) return src;
+        }
+      }
     }
-    if (quality === '1080p Full HD' || quality === '720p') {
-      return 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4';
+
+    if (episodeDetail.stream_url) {
+      const src = extractStreamSrc(episodeDetail.stream_url);
+      if (src) return src;
     }
-    return 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+
+    return null;
   };
+
+  const activeStreamSrc = getActiveStreamUrl();
+
+  // Helper lists for servers & qualities
+  const availableQualities = episodeDetail?.mirrors?.map((m) => m.quality) || ['360p', '480p', '720p', '1080p'];
+  const currentQualityObject = episodeDetail?.mirrors?.find((m) => m.quality === selectedMirrorQuality) || episodeDetail?.mirrors?.[0];
+  const availableProviders = currentQualityObject?.providers || [
+    { name: 'Server Utama (HD)', data_content: null },
+    { name: 'Server Fast 2', data_content: null },
+    { name: 'Server Backup', data_content: null },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md overflow-y-auto">
@@ -141,7 +216,7 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
           <div className="flex items-center gap-2">
             <button
               onClick={handleToggleBookmark}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                 bookmarked
                   ? 'bg-amber-500 text-slate-950 border-amber-400'
                   : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
@@ -153,7 +228,7 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -164,14 +239,34 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Main Video Player Section */}
           <div className="relative aspect-video w-full bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-inner group">
-            {loading ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-3">
+            {loading || loadingEpisode ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-3 bg-slate-950">
                 <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                <p className="text-xs font-medium animate-pulse">Memuat Server Streaming...</p>
+                <p className="text-xs font-medium animate-pulse">Memuat Video Stream Episode...</p>
               </div>
             ) : isPlaying ? (
               <div className="relative w-full h-full bg-black group">
-                {selectedServer === 'Server Backup' ? (
+                {activeStreamSrc ? (
+                  activeStreamSrc.endsWith('.mp4') || activeStreamSrc.endsWith('.m3u8') ? (
+                    <video
+                      key={activeStreamSrc}
+                      src={activeStreamSrc}
+                      poster={anime.image_url}
+                      controls
+                      autoPlay
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <iframe
+                      key={activeStreamSrc}
+                      src={activeStreamSrc}
+                      title={selectedEpisode?.title || anime.title}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                      allowFullScreen
+                    />
+                  )
+                ) : (
                   <iframe
                     src={`https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&modestbranding=1&rel=0`}
                     title={anime.title}
@@ -179,17 +274,6 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
-                ) : (
-                  <video
-                    key={`${selectedEpisode?.slug}-${selectedServer}-${serverQuality}`}
-                    src={getVideoStreamUrl(selectedServer, serverQuality)}
-                    poster={anime.image_url}
-                    controls
-                    autoPlay
-                    className="w-full h-full object-contain"
-                  >
-                    Browser Anda tidak mendukung pemutar video.
-                  </video>
                 )}
 
                 {/* Close player button */}
@@ -220,7 +304,7 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
 
                   <div>
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 uppercase tracking-widest">
-                      {selectedServer} &bull; {serverQuality}
+                      {selectedProviderName || 'Server Utama'} &bull; {selectedMirrorQuality}
                     </span>
                     <h3 className="text-lg font-extrabold text-white mt-2">
                       {selectedEpisode?.title || 'Episode 1'}
@@ -234,7 +318,7 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
                   <div className="flex items-center justify-center gap-3 pt-2">
                     <button
                       onClick={handlePrevEpisode}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60 transition-colors"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60 transition-colors cursor-pointer"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       <span>Prev Ep</span>
@@ -250,7 +334,7 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
 
                     <button
                       onClick={handleNextEpisode}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60 transition-colors"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60 transition-colors cursor-pointer"
                     >
                       <span>Next Ep</span>
                       <ChevronRight className="w-4 h-4" />
@@ -263,23 +347,26 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
 
           {/* Server & Quality Selection Bar */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-            {/* Servers */}
+            {/* Servers / Providers */}
             <div>
               <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5 mb-2">
-                <Server className="w-3.5 h-3.5 text-amber-400" /> Server Video
+                <Server className="w-3.5 h-3.5 text-amber-400" /> Server Provider ({selectedMirrorQuality})
               </span>
               <div className="flex flex-wrap gap-2">
-                {['Server Utama (HD)', 'Server Fast 2', 'Server Backup'].map((srv) => (
+                {availableProviders.map((prov) => (
                   <button
-                    key={srv}
-                    onClick={() => setSelectedServer(srv)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                      selectedServer === srv
-                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
+                    key={prov.name}
+                    onClick={() => {
+                      setSelectedProviderName(prov.name);
+                      setIsPlaying(true);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                      selectedProviderName === prov.name
+                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 font-bold'
                         : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
                     }`}
                   >
-                    {srv}
+                    {prov.name}
                   </button>
                 ))}
               </div>
@@ -288,15 +375,18 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
             {/* Quality Options */}
             <div>
               <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5 mb-2">
-                <Monitor className="w-3.5 h-3.5 text-amber-400" /> Resolusi
+                <Monitor className="w-3.5 h-3.5 text-amber-400" /> Resolusi Video
               </span>
               <div className="flex flex-wrap gap-2">
-                {['360p', '480p', '720p', '1080p Full HD'].map((q) => (
+                {availableQualities.map((q) => (
                   <button
                     key={q}
-                    onClick={() => setServerQuality(q)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                      serverQuality === q
+                    onClick={() => {
+                      setSelectedMirrorQuality(q);
+                      setIsPlaying(true);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                      selectedMirrorQuality === q
                         ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
                         : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
                     }`}
@@ -310,8 +400,8 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
 
           {/* Episode List & Anime Info Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Episode List (2 Cols on lg) */}
-            <div className="lg:col-span-2 space-y-3">
+            {/* Episode List & Downloads (2 Cols on lg) */}
+            <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1.5">
                   <Film className="w-4 h-4 text-amber-400" />
@@ -319,7 +409,7 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
                 </h3>
 
                 {selectedEpisode && (
-                  <span className="text-xs text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                  <span className="text-xs text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 truncate max-w-[200px]">
                     Dipilih: {selectedEpisode.title}
                   </span>
                 )}
@@ -327,13 +417,17 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
 
               {/* Episode Grid Buttons */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-1">
-                {detail?.episodes.map((ep) => {
+                {(episodeDetail?.episode_selector || detail?.episodes)?.map((ep) => {
                   const isSelected = selectedEpisode?.slug === ep.slug;
                   return (
                     <button
                       key={ep.slug}
                       onClick={() => {
-                        setSelectedEpisode(ep);
+                        setSelectedEpisode({
+                          title: ep.title,
+                          slug: ep.slug,
+                          episode_number: 0,
+                        });
                         setIsPlaying(true);
                       }}
                       className={`p-2.5 rounded-xl text-left border transition-all flex items-center justify-between group cursor-pointer ${
@@ -356,31 +450,58 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
                   <span>Download Episode ({selectedEpisode?.title || 'Episode 1'})</span>
                 </h4>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  {['360p SD', '480p SD', '720p HD', '1080p FHD'].map((res) => (
-                    <div key={res} className="p-2 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
-                      <span className="font-semibold text-slate-300">{res}</span>
-                      <div className="flex gap-1.5">
-                        <a
-                          href="https://mega.nz"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 font-mono text-[10px]"
-                        >
-                          Mega
-                        </a>
-                        <a
-                          href="https://drive.google.com"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-blue-400 font-mono text-[10px]"
-                        >
-                          GDrive
-                        </a>
+                {episodeDetail?.downloads && episodeDetail.downloads.length > 0 ? (
+                  <div className="space-y-2">
+                    {episodeDetail.downloads.map((dl, idx) => (
+                      <div key={idx} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-amber-400">{dl.quality}</span>
+                          {dl.size && <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded font-mono">({dl.size})</span>}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {dl.links.map((link, lIdx) => (
+                            <a
+                              key={lIdx}
+                              href={link.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 font-semibold text-[11px] border border-slate-700/60 transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <Download className="w-3 h-3 text-amber-400" />
+                              <span>{link.provider}</span>
+                            </a>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    {['360p SD', '480p SD', '720p HD', '1080p FHD'].map((res) => (
+                      <div key={res} className="p-2 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
+                        <span className="font-semibold text-slate-300">{res}</span>
+                        <div className="flex gap-1.5">
+                          <a
+                            href="https://mega.nz"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 font-mono text-[10px]"
+                          >
+                            Mega
+                          </a>
+                          <a
+                            href="https://drive.google.com"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-blue-400 font-mono text-[10px]"
+                          >
+                            GDrive
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -442,3 +563,4 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
     </div>
   );
 };
+
