@@ -13,59 +13,108 @@ export interface AnimeApiResponse<T> {
 }
 
 /**
- * Searches anime via REST API at api.louiv.me (Oploverz & Otakudesu)
+ * Searches anime via REST API at api.louiv.me (Oploverz, Otakudesu, & Kuramanime)
  */
 export async function searchAnimeApi(query: string): Promise<AnimeItem[]> {
   const encQuery = encodeURIComponent(query);
 
-  // 1. Try Oploverz Search
-  try {
-    const res = await fetch(`${LOUIV_API_BASE}/oploverz/search?q=${encQuery}`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
-      const json = await res.json();
+  const [oploverzRes, otakudesuRes, kuramanimeRes] = await Promise.allSettled([
+    fetch(`${LOUIV_API_BASE}/oploverz/search?q=${encQuery}`, { headers: { Accept: 'application/json' } }),
+    fetch(`${LOUIV_API_BASE}/otakudesu/search?q=${encQuery}`, { headers: { Accept: 'application/json' } }),
+    fetch(`${LOUIV_API_BASE}/kuramanime/anime?search=${encQuery}`, { headers: { Accept: 'application/json' } }),
+  ]);
+
+  const combinedResults: AnimeItem[] = [];
+  const seenTitles = new Set<string>();
+
+  // Process Oploverz results
+  if (oploverzRes.status === 'fulfilled' && oploverzRes.value.ok) {
+    try {
+      const json = await oploverzRes.value.json();
       const list = json.data?.animeList;
-      if (Array.isArray(list) && list.length > 0) {
-        return list.map((item: any) => ({
-          title: item.title || 'Anime',
-          slug: item.slug || item.href?.split('/').filter(Boolean).pop() || 'anime',
-          image_url: item.poster || '',
-          status: item.status || 'Completed',
-          type: item.type || 'TV',
-          rating: '8.5',
-          genres: [],
-        }));
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          const title = item.title || 'Anime';
+          const titleKey = title.toLowerCase().trim();
+          if (!seenTitles.has(titleKey)) {
+            seenTitles.add(titleKey);
+            combinedResults.push({
+              title,
+              slug: item.slug || item.href?.split('/').filter(Boolean).pop() || 'anime',
+              image_url: item.poster || '',
+              status: item.status || 'Completed',
+              type: item.type || 'TV',
+              rating: '8.5',
+              genres: [],
+            });
+          }
+        }
       }
+    } catch (e) {
+      console.warn('Error parsing Oploverz search JSON:', e);
     }
-  } catch (err) {
-    console.warn('Oploverz search failed:', err);
   }
 
-  // 2. Try Otakudesu Search
-  try {
-    const res = await fetch(`${LOUIV_API_BASE}/otakudesu/search?q=${encQuery}`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
-      const json = await res.json();
+  // Process Otakudesu results
+  if (otakudesuRes.status === 'fulfilled' && otakudesuRes.value.ok) {
+    try {
+      const json = await otakudesuRes.value.json();
       const list = json.data?.animeList;
-      if (Array.isArray(list) && list.length > 0) {
-        return list.map((item: any) => ({
-          title: item.title || 'Anime',
-          slug: item.animeId || item.otakudesuUrl?.split('/').filter(Boolean).pop() || 'anime',
-          image_url: item.poster || '',
-          status: item.status?.replace('Status : ', '') || 'Ongoing',
-          rating: item.score?.replace('Rating : ', '') || '8.2',
-          genres: item.genreList?.map((g: any) => ({ title: g.title, slug: g.genreId })) || [],
-        }));
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          const title = item.title || 'Anime';
+          const titleKey = title.toLowerCase().trim();
+          if (!seenTitles.has(titleKey)) {
+            seenTitles.add(titleKey);
+            combinedResults.push({
+              title,
+              slug: item.animeId || item.otakudesuUrl?.split('/').filter(Boolean).pop() || 'anime',
+              image_url: item.poster || '',
+              status: item.status?.replace('Status : ', '') || 'Ongoing',
+              rating: item.score?.replace('Rating : ', '') || '8.2',
+              genres: item.genreList?.map((g: any) => ({ title: g.title, slug: g.genreId })) || [],
+            });
+          }
+        }
       }
+    } catch (e) {
+      console.warn('Error parsing Otakudesu search JSON:', e);
     }
-  } catch (err) {
-    console.warn('Otakudesu search failed:', err);
   }
 
-  // 3. Fallback to Sansekai API
+  // Process Kuramanime results
+  if (kuramanimeRes.status === 'fulfilled' && kuramanimeRes.value.ok) {
+    try {
+      const json = await kuramanimeRes.value.json();
+      const list = json.data?.animeList || json.data;
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          const title = item.title || item.name || 'Anime';
+          const titleKey = title.toLowerCase().trim();
+          if (!seenTitles.has(titleKey)) {
+            seenTitles.add(titleKey);
+            combinedResults.push({
+              title,
+              slug: item.animeId || item.id || item.slug || 'anime',
+              image_url: item.poster || item.image || item.cover || '',
+              status: item.status || 'Ongoing',
+              type: item.type || 'TV',
+              rating: item.score || item.rating || '8.3',
+              genres: item.genreList?.map((g: any) => ({ title: g.title || g, slug: g.genreId || g })) || [],
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error parsing Kuramanime search JSON:', e);
+    }
+  }
+
+  if (combinedResults.length > 0) {
+    return combinedResults;
+  }
+
+  // Fallback to Sansekai API if both returned empty
   try {
     const res = await fetch(`${SANSEKAI_API_BASE}/anime/search?q=${encQuery}`, {
       headers: { Accept: 'application/json' },
@@ -141,53 +190,62 @@ export async function fetchPopularAnime(): Promise<AnimeItem[]> {
 }
 
 /**
- * Fetches ongoing anime list from Otakudesu ongoing and Oploverz home endpoints
+ * Fetches ongoing anime list from Otakudesu, Oploverz, and Kuramanime endpoints
  */
 export async function fetchOngoingAnime(): Promise<AnimeItem[]> {
-  // 1. Try Otakudesu ongoing endpoint
-  try {
-    const res = await fetch(`${LOUIV_API_BASE}/otakudesu/ongoing?page=1`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
-      const json = await res.json();
+  const [otakudesuRes, oploverzRes, kuramanimeRes] = await Promise.allSettled([
+    fetch(`${LOUIV_API_BASE}/otakudesu/ongoing?page=1`, { headers: { Accept: 'application/json' } }),
+    fetch(`${LOUIV_API_BASE}/oploverz/home`, { headers: { Accept: 'application/json' } }),
+    fetch(`${LOUIV_API_BASE}/kuramanime/anime?status=ongoing`, { headers: { Accept: 'application/json' } }),
+  ]);
+
+  const result: AnimeItem[] = [];
+  const seenTitles = new Set<string>();
+
+  // Process Otakudesu ongoing
+  if (otakudesuRes.status === 'fulfilled' && otakudesuRes.value.ok) {
+    try {
+      const json = await otakudesuRes.value.json();
       const list = json.data?.animeList;
-      if (Array.isArray(list) && list.length > 0) {
-        return list.map((item: any) => ({
-          title: item.title || 'Anime',
-          slug: item.animeId || (item.otakudesuUrl ? item.otakudesuUrl.split('/').filter(Boolean).pop() : 'anime'),
-          image_url: item.poster || '',
-          status: 'Ongoing',
-          type: 'TV',
-          rating: '8.5',
-          latest_episode: item.episodes ? `Episode ${item.episodes}` : '',
-          genres: [],
-        }));
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          const title = item.title || 'Anime';
+          const titleKey = title.toLowerCase().trim();
+          if (!seenTitles.has(titleKey)) {
+            seenTitles.add(titleKey);
+            result.push({
+              title,
+              slug: item.animeId || (item.otakudesuUrl ? item.otakudesuUrl.split('/').filter(Boolean).pop() : 'anime'),
+              image_url: item.poster || '',
+              status: 'Ongoing',
+              type: 'TV',
+              rating: '8.5',
+              latest_episode: item.episodes ? `Episode ${item.episodes}` : '',
+              genres: [],
+            });
+          }
+        }
       }
+    } catch (err) {
+      console.warn('Error parsing Otakudesu ongoing:', err);
     }
-  } catch (err) {
-    console.warn('Failed to fetch otakudesu ongoing:', err);
   }
 
-  // 2. Try Oploverz home
-  try {
-    const res = await fetch(`${LOUIV_API_BASE}/oploverz/home`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
-      const json = await res.json();
+  // Process Oploverz home
+  if (oploverzRes.status === 'fulfilled' && oploverzRes.value.ok) {
+    try {
+      const json = await oploverzRes.value.json();
       const homeData = json.data;
       const list = homeData?.popularToday?.animeList || homeData?.latestRelease?.animeList;
-      if (Array.isArray(list) && list.length > 0) {
-        const result: AnimeItem[] = [];
-        const seen = new Set<string>();
-
+      if (Array.isArray(list)) {
         for (const item of list) {
+          const title = item.seriesName?.split('\t')[0] || item.title || 'Anime';
+          const titleKey = title.toLowerCase().trim();
           const rawSlug = item.seriesSlug || item.slug || (item.href ? item.href.split('/').filter(Boolean).pop() : '');
-          if (rawSlug && !seen.has(rawSlug)) {
-            seen.add(rawSlug);
+          if (rawSlug && !seenTitles.has(titleKey)) {
+            seenTitles.add(titleKey);
             result.push({
-              title: item.seriesName?.split('\t')[0] || item.title || 'Anime',
+              title,
               slug: rawSlug,
               image_url: item.poster || '',
               status: 'Ongoing',
@@ -197,11 +255,43 @@ export async function fetchOngoingAnime(): Promise<AnimeItem[]> {
             });
           }
         }
-        if (result.length > 0) return result;
       }
+    } catch (err) {
+      console.warn('Error parsing Oploverz home:', err);
     }
-  } catch (err) {
-    console.warn('Failed to fetch oploverz home ongoing:', err);
+  }
+
+  // Process Kuramanime ongoing
+  if (kuramanimeRes.status === 'fulfilled' && kuramanimeRes.value.ok) {
+    try {
+      const json = await kuramanimeRes.value.json();
+      const list = json.data?.animeList || json.data;
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          const title = item.title || item.name || 'Anime';
+          const titleKey = title.toLowerCase().trim();
+          if (!seenTitles.has(titleKey)) {
+            seenTitles.add(titleKey);
+            result.push({
+              title,
+              slug: item.animeId || item.id || item.slug || 'anime',
+              image_url: item.poster || item.image || item.cover || '',
+              status: 'Ongoing',
+              type: item.type || 'TV',
+              rating: item.score || item.rating || '8.4',
+              latest_episode: item.episodes ? `Episode ${item.episodes}` : '',
+              genres: [],
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Error parsing Kuramanime ongoing:', err);
+    }
+  }
+
+  if (result.length > 0) {
+    return result;
   }
 
   // Fallback search
