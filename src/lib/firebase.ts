@@ -3,13 +3,13 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const defaultFirebaseConfig = {
-  projectId: "yielding-datum-lzp2g",
-  appId: "1:74744533323:web:3bef96ed4ad04dc22618ce",
-  apiKey: "AIzaSyCIaxpiCMGqc9GiZ7pPMEKbP3iWcKbyfpU",
-  authDomain: "yielding-datum-lzp2g.firebaseapp.com",
-  firestoreDatabaseId: "ai-studio-copy-50261e5e-2530-46e4-bfa0-360061fdbff7",
-  storageBucket: "yielding-datum-lzp2g.firebasestorage.app",
-  messagingSenderId: "74744533323",
+  projectId: "loui-4c309",
+  appId: "1:765750796086:android:0030f1948387d417de1d97",
+  apiKey: "AIzaSyCxytSbAJv0glm814OFMEzNy1kTRaOAK0I",
+  authDomain: "loui-4c309.firebaseapp.com",
+  firestoreDatabaseId: "default",
+  storageBucket: "loui-4c309.firebasestorage.app",
+  messagingSenderId: "765750796086",
 };
 
 const app = getApps().length === 0 ? initializeApp(defaultFirebaseConfig) : getApp();
