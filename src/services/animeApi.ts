@@ -21,7 +21,7 @@ export async function searchAnimeApi(query: string): Promise<AnimeItem[]> {
   const [oploverzRes, otakudesuRes, kuramanimeRes] = await Promise.allSettled([
     fetch(`${LOUIV_API_BASE}/oploverz/search?q=${encQuery}`, { headers: { Accept: 'application/json' } }),
     fetch(`${LOUIV_API_BASE}/otakudesu/search?q=${encQuery}`, { headers: { Accept: 'application/json' } }),
-    fetch(`${LOUIV_API_BASE}/kuramanime/anime?search=${encQuery}`, { headers: { Accept: 'application/json' } }),
+    fetch(`${LOUIV_API_BASE}/kuramanime/search?q=${encQuery}`, { headers: { Accept: 'application/json' } }),
   ]);
 
   const combinedResults: AnimeItem[] = [];
