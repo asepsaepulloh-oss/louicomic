@@ -31,6 +31,14 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      - name: Install Node Dependencies
+        run: npm ci || npm install
+
+      - name: Build Web App & Sync Capacitor
+        run: |
+          npm run build
+          npx cap sync android
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -41,14 +49,6 @@ jobs:
           cd android
           gradle wrapper --gradle-version 8.14.3
           chmod +x gradlew
-
-      - name: Install Node Dependencies
-        run: npm ci || npm install
-
-      - name: Build Web App & Sync Capacitor
-        run: |
-          npm run build
-          npx cap sync android
 
       - name: Build Android Debug APK
         run: |
