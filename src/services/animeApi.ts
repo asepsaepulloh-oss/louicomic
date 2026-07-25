@@ -555,6 +555,55 @@ export function extractStreamSrc(dataContentOrUrl: string | null | undefined): s
 const LS_ANIME_BOOKMARKS_KEY = 'louicomic_anime_bookmarks';
 const LS_ANIME_HISTORY_KEY = 'louicomic_anime_history';
 
+export interface AnimeVideoResult {
+  url: string;
+  type: 'direct' | 'embed';
+  availableResolutions: string[];
+}
+
+export async function getAnimeVideo(episodeId: string, reso: string = '720p'): Promise<AnimeVideoResult> {
+  const detail = await fetchEpisodeDetailApi(episodeId);
+  if (!detail || !detail.mirrors || detail.mirrors.length === 0) {
+    if (detail?.stream_url) {
+      const isDirect = detail.stream_url.endsWith('.mp4') || detail.stream_url.endsWith('.m3u8');
+      return {
+        url: isDirect ? detail.stream_url : `/api/stream-embed?url=${encodeURIComponent(detail.stream_url)}`,
+        type: isDirect ? 'direct' : 'embed',
+        availableResolutions: ['360p', '480p', '720p', '1080p'],
+      };
+    }
+    throw new Error('Video stream tidak ditemukan');
+  }
+
+  const availableResolutions = detail.mirrors.map((m) => m.quality);
+  const mirror = detail.mirrors.find((m) => m.quality.toLowerCase() === reso.toLowerCase()) || detail.mirrors[0];
+
+  let rawUrl = '';
+  if (mirror && mirror.providers && mirror.providers.length > 0) {
+    const defaultProvider = mirror.providers.find((p) => p.is_default) || mirror.providers[0];
+    if (defaultProvider.data_content) {
+      rawUrl = extractStreamSrc(defaultProvider.data_content);
+    }
+  }
+
+  if (!rawUrl && detail.stream_url) {
+    rawUrl = detail.stream_url;
+  }
+
+  if (!rawUrl) {
+    throw new Error('Video URL tidak tersedia untuk resolusi ini');
+  }
+
+  const isDirect = rawUrl.endsWith('.mp4') || rawUrl.endsWith('.m3u8');
+  const finalUrl = isDirect ? rawUrl : `/api/stream-embed?url=${encodeURIComponent(rawUrl)}`;
+
+  return {
+    url: finalUrl,
+    type: isDirect ? 'direct' : 'embed',
+    availableResolutions,
+  };
+}
+
 export const getAnimeBookmarks = (): AnimeBookmarkItem[] => {
   try {
     const raw = localStorage.getItem(LS_ANIME_BOOKMARKS_KEY);
