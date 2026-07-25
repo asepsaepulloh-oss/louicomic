@@ -262,8 +262,9 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
                       src={activeStreamSrc}
                       title={selectedEpisode?.title || anime.title}
                       className="w-full h-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                       allowFullScreen
+                      referrerPolicy="no-referrer"
                     />
                   )
                 ) : (
@@ -273,11 +274,24 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
                     className="w-full h-full border-0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
+                    referrerPolicy="no-referrer"
                   />
                 )}
 
-                {/* Close player button */}
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                {/* Top overlay player controls */}
+                <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
+                  {activeStreamSrc && (
+                    <a
+                      href={activeStreamSrc}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-lg flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="Buka pemutar video langsung di tab baru"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Buka di Tab Baru</span>
+                    </a>
+                  )}
                   <button
                     onClick={() => setIsPlaying(false)}
                     className="px-3 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-xs text-slate-200 border border-slate-700/80 backdrop-blur-md shadow-lg flex items-center gap-1.5 cursor-pointer"
@@ -342,6 +356,27 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
                   </div>
                 </div>
               </div>
+            )}
+          </div>
+
+          {/* Streaming Tip Banner */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-300">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <span>
+                <strong>Tips Streaming:</strong> Jika pemutar video tidak memuat (layar hitam), coba pilih <strong>Server Provider</strong> di bawah atau klik <strong>Buka di Tab Baru</strong>.
+              </span>
+            </div>
+            {activeStreamSrc && (
+              <a
+                href={activeStreamSrc}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-semibold transition-colors flex-shrink-0 cursor-pointer"
+              >
+                <span>Buka Tab Baru</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
             )}
           </div>
 
