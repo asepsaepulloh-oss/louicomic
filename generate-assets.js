@@ -75,6 +75,30 @@ async function generate() {
     .toFile(path.resolve('public/apple-touch-icon.png'));
 
   console.log('Asset images generated successfully!');
+
+  // Fix adaptive icon XMLs in android/app/src/main/res/mipmap-anydpi-v26/
+  const xmlContent = `<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>`;
+
+  const mipmapAnyDpiDir = path.resolve('android/app/src/main/res/mipmap-anydpi-v26');
+  if (fs.existsSync(mipmapAnyDpiDir)) {
+    fs.writeFileSync(path.join(mipmapAnyDpiDir, 'ic_launcher.xml'), xmlContent, 'utf8');
+    fs.writeFileSync(path.join(mipmapAnyDpiDir, 'ic_launcher_round.xml'), xmlContent, 'utf8');
+    console.log('Fixed ic_launcher.xml and ic_launcher_round.xml adaptive icon definitions!');
+  }
+
+  const valuesDir = path.resolve('android/app/src/main/res/values');
+  if (fs.existsSync(valuesDir)) {
+    const colorXml = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#0F172A</color>
+</resources>`;
+    fs.writeFileSync(path.join(valuesDir, 'ic_launcher_background.xml'), colorXml, 'utf8');
+    console.log('Fixed ic_launcher_background.xml color!');
+  }
 }
 
 generate().catch(err => {
