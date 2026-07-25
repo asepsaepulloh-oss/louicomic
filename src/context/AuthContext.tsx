@@ -23,15 +23,11 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-// Check if Clerk key is live key and whether current hostname is allowed (louiv.me, localhost)
-const isLiveKey = clerkPubKey?.startsWith('pk_live_');
-const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
-const isDomainAllowed = !isLiveKey || currentHost.endsWith('louiv.me') || currentHost === 'localhost' || currentHost === '127.0.0.1';
+const rawClerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const clerkPubKey = rawClerkPubKey ? rawClerkPubKey.trim().replace(/^["']|["']$/g, '') : '';
 
 export const isClerkConfigured = Boolean(
-  clerkPubKey && clerkPubKey.startsWith('pk_') && clerkPubKey.length > 20 && isDomainAllowed
+  clerkPubKey && clerkPubKey.startsWith('pk_') && clerkPubKey.length > 20
 );
 
 /**
