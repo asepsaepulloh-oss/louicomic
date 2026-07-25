@@ -20,7 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [searchInput, setSearchInput] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isSignedIn, isClerkConfigured, userName } = useAuth();
+  const { isSignedIn, isClerkConfigured, userName, openSignInModal } = useAuth();
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,40 +120,32 @@ export const Header: React.FC<HeaderProps> = ({
           {/* User Auth Buttons */}
           <div className="flex items-center gap-2">
             
-            {/* Clerk User Button or Guest Profile */}
+            {/* Clerk User Button or Guest / Masuk Button */}
             <div className="flex items-center">
-              {isClerkConfigured ? (
-                isSignedIn ? (
-                  <UserButton
-                    appearance={{
-                      elements: {
-                        avatarBox: 'w-8 h-8 rounded-full border border-amber-500/40',
-                      },
-                    }}
-                  />
-                ) : (
-                  <SignInButton mode="modal">
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold transition-all">
-                      <User className="w-3.5 h-3.5" />
-                      <span>Masuk</span>
-                    </button>
-                  </SignInButton>
-                )
+              {isSignedIn ? (
+                <UserButton
+                  appearance={{
+                    elements: {
+                      avatarBox: 'w-8 h-8 rounded-full border border-amber-500/40',
+                    },
+                  }}
+                />
               ) : (
-                <div
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-slate-300 bg-slate-800/80 border border-slate-700/60"
-                  title="Modus Tamu (Guest)"
+                <button
+                  onClick={openSignInModal}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
+                  title="Masuk ke Akun / Konfigurasi Clerk"
                 >
-                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="truncate max-w-[80px] sm:max-w-[120px] font-medium">{userName}</span>
-                </div>
+                  <User className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
+                  <span>Masuk</span>
+                </button>
               )}
             </div>
 
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -185,7 +177,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onSelectTab(item.id);
                       setMobileMenuOpen(false);
                     }}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                       isActive
                         ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                         : 'text-slate-300 bg-slate-800/50 hover:bg-slate-800'
@@ -201,6 +193,19 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 );
               })}
+
+              {!isSignedIn && (
+                <button
+                  onClick={() => {
+                    openSignInModal();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 col-span-2 transition-all cursor-pointer"
+                >
+                  <User className="w-4 h-4 fill-slate-950" />
+                  <span>Masuk ke Akun / Set Clerk Key</span>
+                </button>
+              )}
             </div>
           </div>
         )}
