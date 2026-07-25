@@ -35,12 +35,39 @@ async function startServer() {
 
       let html = await response.text();
 
+      // Strip ad/tracking scripts from original HTML
+      html = html.replace(/<script[^>]*src=["'][^"']*(nekostream|statlytic|bodegashunlike|linkmansclate)[^"']*["'][^>]*><\/script>/gi, '');
+
       // Patch script to override window.parent/window.top and document.domain before player scripts execute
       const patchScript = `
         <base href="${origin}/" />
         <script>
           (function() {
-            // 1. Override parent and top to prevent frame-busting detection
+            // 1. Override Document.prototype.referrer and document.referrer
+            try {
+              Object.defineProperty(Document.prototype, 'referrer', {
+                get: function() { return 'https://animixplay.cz/'; },
+                configurable: true
+              });
+            } catch(e) {}
+            try {
+              Object.defineProperty(document, 'referrer', {
+                get: function() { return 'https://animixplay.cz/'; },
+                configurable: true
+              });
+            } catch(e) {}
+
+            // 2. Override Window.prototype and window parent/top to prevent frame-busting
+            try {
+              Object.defineProperty(Window.prototype, 'parent', {
+                get: function() { return this; },
+                configurable: true
+              });
+              Object.defineProperty(Window.prototype, 'top', {
+                get: function() { return this; },
+                configurable: true
+              });
+            } catch(e) {}
             try {
               Object.defineProperty(window, 'parent', {
                 get: function() { return window; },
@@ -52,20 +79,12 @@ async function startServer() {
               });
             } catch(e) {}
 
-            // 2. Override document.domain
+            // 3. Override document.domain
             try {
-              var _d = document.domain;
+              var _d = 'animixplay.cz';
               Object.defineProperty(document, 'domain', {
                 get: function() { return _d; },
                 set: function(v) { return v; },
-                configurable: true
-              });
-            } catch(e) {}
-
-            // 3. Spoof document.referrer to allowed domain
-            try {
-              Object.defineProperty(document, 'referrer', {
-                get: function() { return 'https://animixplay.cz/'; },
                 configurable: true
               });
             } catch(e) {}
@@ -77,15 +96,15 @@ async function startServer() {
                 return Promise.resolve(false);
               },
               run: function(opts) {
-                if (opts && opts.onAllowed) opts.onAllowed();
-                if (opts && opts.onResult) opts.onResult(false);
+                if (opts && opts.onAllowed) try { opts.onAllowed(); } catch(err) {}
+                if (opts && opts.onResult) try { opts.onResult(false); } catch(err) {}
                 return Promise.resolve(false);
               },
               isTopLevel: function() { return true; },
               showBlockMessage: function() {}
             };
 
-            // 5. Neutralize devtoolsDetector (prevents redirecting when DevTools/Console is open)
+            // 5. Neutralize devtoolsDetector
             var dummyDevTools = {
               addListener: function() {},
               removeListener: function() {},
@@ -102,13 +121,44 @@ async function startServer() {
               });
             } catch(e) {}
 
-            // 6. Block location.replace / location.assign redirects away to comic.louiv.me
+            // 6. Block redirect calls to comic.louiv.me
             try {
+              var origReplace = window.location.replace.bind(window.location);
+              var origAssign = window.location.assign.bind(window.location);
               window.location.replace = function(url) {
-                console.warn('[Proxy Patch] Blocked location.replace to:', url);
+                if (url && (String(url).includes('comic.louiv.me') || String(url).includes('louiv.me'))) {
+                  console.warn('[Proxy Patch] Blocked location.replace to:', url);
+                  return;
+                }
+                return origReplace(url);
               };
               window.location.assign = function(url) {
-                console.warn('[Proxy Patch] Blocked location.assign to:', url);
+                if (url && (String(url).includes('comic.louiv.me') || String(url).includes('louiv.me'))) {
+                  console.warn('[Proxy Patch] Blocked location.assign to:', url);
+                  return;
+                }
+                return origAssign(url);
+              };
+            } catch(e) {}
+
+            // 7. Intercept script creation to block ad scripts dynamically
+            try {
+              var origCreateElement = document.createElement.bind(document);
+              document.createElement = function(tagName, options) {
+                var el = origCreateElement(tagName, options);
+                if (tagName && String(tagName).toLowerCase() === 'script') {
+                  var origSetAttribute = el.setAttribute.bind(el);
+                  el.setAttribute = function(name, val) {
+                    if (name === 'src' && typeof val === 'string') {
+                      if (val.includes('nekostream') || val.includes('linkmansclate') || val.includes('bodegashunlike')) {
+                        console.warn('[Proxy Patch] Blocked ad script:', val);
+                        return;
+                      }
+                    }
+                    return origSetAttribute(name, val);
+                  };
+                }
+                return el;
               };
             } catch(e) {}
           })();
