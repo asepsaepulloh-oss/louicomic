@@ -41,6 +41,7 @@ function streamProxyPlugin() {
         <base href="${origin}/" />
         <script>
           (function() {
+            // 1. Override parent and top to prevent frame-busting detection
             try {
               Object.defineProperty(window, 'parent', {
                 get: function() { return window; },
@@ -52,6 +53,7 @@ function streamProxyPlugin() {
               });
             } catch(e) {}
 
+            // 2. Override document.domain
             try {
               var _d = document.domain;
               Object.defineProperty(document, 'domain', {
@@ -61,12 +63,55 @@ function streamProxyPlugin() {
               });
             } catch(e) {}
 
+            // 3. Spoof document.referrer to allowed domain
+            try {
+              Object.defineProperty(document, 'referrer', {
+                get: function() { return 'https://animixplay.cz/'; },
+                configurable: true
+              });
+            } catch(e) {}
+
+            // 4. Neutralize SandboxDetector
             window.SandboxDetector = {
-              detect: function() { return Promise.resolve(false); },
-              run: function() { return Promise.resolve(false); },
+              detect: function(cb) {
+                if (typeof cb === 'function') cb(false);
+                return Promise.resolve(false);
+              },
+              run: function(opts) {
+                if (opts && opts.onAllowed) opts.onAllowed();
+                if (opts && opts.onResult) opts.onResult(false);
+                return Promise.resolve(false);
+              },
               isTopLevel: function() { return true; },
               showBlockMessage: function() {}
             };
+
+            // 5. Neutralize devtoolsDetector (prevents redirecting when DevTools/Console is open)
+            var dummyDevTools = {
+              addListener: function() {},
+              removeListener: function() {},
+              isLaunch: function() { return false; },
+              launch: function() {},
+              stop: function() {},
+              start: function() {}
+            };
+            try {
+              Object.defineProperty(window, 'devtoolsDetector', {
+                get: function() { return dummyDevTools; },
+                set: function() {},
+                configurable: true
+              });
+            } catch(e) {}
+
+            // 6. Block location.replace / location.assign redirects away to comic.louiv.me
+            try {
+              window.location.replace = function(url) {
+                console.warn('[Proxy Patch] Blocked location.replace to:', url);
+              };
+              window.location.assign = function(url) {
+                console.warn('[Proxy Patch] Blocked location.assign to:', url);
+              };
+            } catch(e) {}
           })();
         </script>
       `;
