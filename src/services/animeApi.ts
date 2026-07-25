@@ -595,9 +595,10 @@ export async function getAnimeVideo(episodeId: string, reso: string = '720p'): P
   }
 
   const isDirect = rawUrl.endsWith('.mp4') || rawUrl.endsWith('.m3u8');
+  const finalUrl = isDirect ? rawUrl : `/api/stream-embed?url=${encodeURIComponent(rawUrl)}`;
 
   return {
-    url: rawUrl,
+    url: finalUrl,
     type: isDirect ? 'direct' : 'embed',
     availableResolutions,
   };
