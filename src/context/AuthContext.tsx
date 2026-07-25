@@ -214,29 +214,47 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 <ErrorBoundary
                   fallback={
                     <div className="w-full space-y-4 py-2 text-center">
-                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs text-left space-y-1.5">
+                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs text-left space-y-2">
                         <div className="flex items-center gap-2 font-bold text-white">
                           <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
                           <span>Tidak Dapat Memuat Login Clerk</span>
                         </div>
                         <p className="text-[11px] text-slate-300 leading-relaxed">
-                          Clerk Key belum mendukung domain <code className="text-amber-400 font-mono">comic.louiv.me</code> atau terjadi kendala jaringan. Pastikan domain ini diizinkan di Clerk Dashboard.
+                          Domain <code className="text-amber-400 font-mono px-1 py-0.5 rounded bg-slate-900">{window.location.hostname}</code> belum terdaftar di Clerk Dashboard atau kunci Publishable Key berbeda origin.
                         </p>
+                        <div className="text-[10px] text-slate-400 bg-slate-950 p-2 rounded-lg border border-slate-800/80 space-y-1 font-mono">
+                          <p className="text-amber-300/90 font-sans font-semibold">💡 Cara Mengizinkan Domain di Clerk:</p>
+                          <p>1. Buka dashboard.clerk.com</p>
+                          <p>2. Pilih proyek &amp; masuk ke <strong>Domains / Allowed Origins</strong></p>
+                          <p>3. Tambahkan <strong>{window.location.origin}</strong></p>
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-2 pt-1">
                         <button
-                          onClick={() => setShowKeySettings(true)}
-                          className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer shadow-md transition-all"
+                          onClick={() => setShowSignInModal(false)}
+                          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold text-xs cursor-pointer shadow-lg shadow-amber-500/10 transition-all flex items-center justify-center gap-2"
                         >
-                          Ubah / Masukkan Clerk Key Baru
+                          <User className="w-4 h-4 text-slate-950" />
+                          <span>Lanjut dengan Mode Tamu (Gratis)</span>
                         </button>
-                        <button
-                          onClick={handleClearClerkKey}
-                          className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 cursor-pointer transition-all"
-                        >
-                          Reset & Gunakan Mode Tamu
-                        </button>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => setShowKeySettings(true)}
+                            className="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-[11px] border border-slate-700 cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                          >
+                            <Settings className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Ubah Key Clerk</span>
+                          </button>
+                          <button
+                            onClick={handleClearClerkKey}
+                            className="py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-rose-400 font-semibold text-[11px] border border-slate-800 cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                          >
+                            <Key className="w-3.5 h-3.5" />
+                            <span>Reset Key</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   }
