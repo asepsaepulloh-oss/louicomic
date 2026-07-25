@@ -35,6 +35,11 @@ jobs:
         run: npm ci || npm install
 
       - name: Build Web App & Sync Capacitor
+        env:
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_SHINIGAMI_API_BASE: ${{ secrets.VITE_SHINIGAMI_API_BASE }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           npm run build
           npx cap sync android
