@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { App as CapApp } from '@capacitor/app';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -102,15 +101,26 @@ function AppContent() {
 
   // Capacitor Deep Link Listener for Mobile OAuth Callbacks
   useEffect(() => {
-    const sub = CapApp.addListener('appUrlOpen', (data) => {
-      console.log('Capacitor App URL Opened:', data.url);
-      if (data.url.includes('clerk') || data.url.includes('callback') || data.url.includes('token')) {
-        // If deep link contains callback, reload or let Clerk JS handle URL params
-        window.location.href = data.url;
-      }
-    });
+    let subHandler: any = null;
+    import('@capacitor/app')
+      .then(({ App: CapApp }) => {
+        CapApp.addListener('appUrlOpen', (data) => {
+          console.log('Capacitor App URL Opened:', data.url);
+          if (data.url.includes('clerk') || data.url.includes('callback') || data.url.includes('token')) {
+            window.location.href = data.url;
+          }
+        }).then((sub) => {
+          subHandler = sub;
+        }).catch(() => {});
+      })
+      .catch(() => {
+        // Ignores if running in standard web browser without @capacitor/app
+      });
+
     return () => {
-      sub.then((s) => s.remove()).catch(() => {});
+      if (subHandler && typeof subHandler.remove === 'function') {
+        subHandler.remove();
+      }
     };
   }, []);
 
