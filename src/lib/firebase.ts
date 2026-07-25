@@ -4,8 +4,8 @@ import { getFirestore } from 'firebase/firestore';
 
 const defaultFirebaseConfig = {
   projectId: "loui-4c309",
-  appId: "1:765750796086:android:0030f1948387d417de1d97",
-  apiKey: "AIzaSyCxytSbAJv0glm814OFMEzNy1kTRaOAK0I",
+  appId: "1:765750796086:web:3e6a960278658fe9de1d97",
+  apiKey: "AIzaSyCUKhJLcixcA2A2X9xsHz1YogDVOyc8z79k",
   authDomain: "loui-4c309.firebaseapp.com",
   firestoreDatabaseId: "default",
   storageBucket: "loui-4c309.firebasestorage.app",
