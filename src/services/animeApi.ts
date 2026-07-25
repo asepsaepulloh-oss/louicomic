@@ -1,35 +1,54 @@
 import { AnimeItem, AnimeDetailData, AnimeEpisodeItem, AnimeBookmarkItem, AnimeWatchHistoryItem, EpisodeDetailData } from '../types/anime';
 
-const ANIME_API_BASE = 'https://api.louiv.me/api';
+const ANIME_API_BASE = 'https://api.sansekai.my.id/api';
 
 export interface AnimeApiResponse<T> {
-  ok: boolean;
+  ok?: boolean;
+  success?: boolean;
+  status?: boolean | number;
   data?: T;
+  results?: T;
   query?: string;
   error?: string;
 }
 
 /**
- * Searches anime via REST API at api.louiv.me
+ * Searches anime via REST API at api.sansekai.my.id
  */
 export async function searchAnimeApi(query: string): Promise<AnimeItem[]> {
-  const url = `${ANIME_API_BASE}/search?q=${encodeURIComponent(query)}`;
-  try {
-    const res = await fetch(url, {
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) {
-      throw new Error(`HTTP error ${res.status}`);
+  const urls = [
+    `${ANIME_API_BASE}/anime/search?q=${encodeURIComponent(query)}`,
+    `${ANIME_API_BASE}/anime/search?query=${encodeURIComponent(query)}`,
+    `${ANIME_API_BASE}/search?q=${encodeURIComponent(query)}`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) continue;
+
+      const json = await res.json();
+      const list = json.data || json.results || json.anime || (Array.isArray(json) ? json : null);
+
+      if (Array.isArray(list) && list.length > 0) {
+        return list.map((item: any) => ({
+          title: item.title || item.name || 'Anime',
+          slug: item.slug || item.id || item.url || item.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          rating: item.rating || item.score || '8.2',
+          status: item.status || 'Ongoing',
+          image_url: item.image_url || item.image || item.cover || item.poster || item.thumb || '',
+          genres: item.genres || item.genre || [],
+          latest_episode: item.latest_episode || item.episode || item.episodes_count || '',
+        }));
+      }
+    } catch (err) {
+      console.warn(`Anime search error at ${url}:`, err);
     }
-    const json: AnimeApiResponse<AnimeItem[]> = await res.json();
-    if (json.ok && Array.isArray(json.data)) {
-      return json.data;
-    }
-    return [];
-  } catch (err) {
-    console.warn(`Anime search API error for query "${query}":`, err);
-    return [];
   }
+
+  return [];
 }
 
 /**
@@ -82,27 +101,44 @@ export async function fetchPopularAnime(): Promise<AnimeItem[]> {
 }
 
 /**
- * Fetches ongoing anime list
+ * Fetches ongoing anime list (from /anime/latest or /anime/recommended)
  */
 export async function fetchOngoingAnime(): Promise<AnimeItem[]> {
-  try {
-    // Try endpoint first
-    const res = await fetch(`${ANIME_API_BASE}/ongoing?page=1`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
+  const endpoints = [
+    `${ANIME_API_BASE}/anime/latest`,
+    `${ANIME_API_BASE}/anime/recommended`,
+    `${ANIME_API_BASE}/ongoing?page=1`,
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const res = await fetch(ep, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) continue;
+
       const json = await res.json();
-      if (json.ok && Array.isArray(json.data)) {
-        return json.data;
+      const list = json.data || json.results || json.anime || (Array.isArray(json) ? json : null);
+
+      if (Array.isArray(list) && list.length > 0) {
+        return list.map((item: any) => ({
+          title: item.title || item.name || 'Anime',
+          slug: item.slug || item.id || item.url || item.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          rating: item.rating || item.score || '8.5',
+          status: item.status || 'Ongoing',
+          image_url: item.image_url || item.image || item.cover || item.poster || item.thumb || '',
+          genres: item.genres || item.genre || [],
+          latest_episode: item.latest_episode || item.episode || '',
+        }));
       }
+    } catch (e) {
+      // try next
     }
-  } catch (e) {
-    // Fallback to search filter
   }
 
-  // Fallback: search anime and filter by status === 'Ongoing'
+  // Fallback: search anime and filter by status
   const all = await searchAnimeApi('a');
-  return all.filter((item) => item.status?.toLowerCase().includes('ongoing'));
+  return all.filter((item) => item.status?.toLowerCase().includes('ongoing')) || all;
 }
 
 /**
@@ -144,34 +180,44 @@ export function generateEpisodesFromTitle(item: AnimeItem): AnimeEpisodeItem[] {
 }
 
 /**
- * Gets detailed anime info with fallback if endpoint is unavailable
+ * Gets detailed anime info from /anime/detail with fallback
  */
 export async function fetchAnimeDetailApi(item: AnimeItem): Promise<AnimeDetailData> {
-  // Try direct endpoint if available
-  try {
-    const res = await fetch(`${ANIME_API_BASE}/anime/${item.slug}`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
+  const urls = [
+    `${ANIME_API_BASE}/anime/detail?slug=${encodeURIComponent(item.slug)}`,
+    `${ANIME_API_BASE}/anime/detail?url=${encodeURIComponent(item.slug)}`,
+    `${ANIME_API_BASE}/anime/detail/${item.slug}`,
+    `${ANIME_API_BASE}/anime/${item.slug}`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) continue;
+
       const json = await res.json();
-      if (json.ok && json.data) {
+      const payload = json.data || json.detail || (json.title ? json : null);
+
+      if (payload) {
         return {
-          title: json.data.title || item.title,
+          title: payload.title || item.title,
           slug: item.slug,
-          japanese_title: json.data.japanese_title || item.title,
-          status: json.data.status || item.status || 'Ongoing',
-          rating: json.data.rating || item.rating || '8.2',
-          synopsis: json.data.synopsis || `Nonton Anime ${item.title} Subtitle Indonesia dengan kualitas HD di LouiComic.`,
-          image_url: json.data.image_url || item.image_url,
-          genres: json.data.genres || item.genres || [],
-          episodes: Array.isArray(json.data.episodes) && json.data.episodes.length > 0
-            ? json.data.episodes
+          japanese_title: payload.japanese_title || payload.title || item.title,
+          status: payload.status || item.status || 'Ongoing',
+          rating: payload.rating || item.rating || '8.2',
+          synopsis: payload.synopsis || `Nonton Anime ${item.title} Subtitle Indonesia di LouiComic.`,
+          image_url: payload.image_url || payload.image || item.image_url,
+          genres: payload.genres || item.genres || [],
+          episodes: Array.isArray(payload.episodes) && payload.episodes.length > 0
+            ? payload.episodes
             : generateEpisodesFromTitle(item),
         };
       }
+    } catch (e) {
+      console.warn(`Anime detail fetch error at ${url}:`, e);
     }
-  } catch (e) {
-    console.warn(`Direct anime detail error for ${item.slug}, using generated detail:`, e);
   }
 
   // Fallback detail constructed from item metadata
@@ -191,29 +237,35 @@ export async function fetchAnimeDetailApi(item: AnimeItem): Promise<AnimeDetailD
 }
 
 /**
- * Fetches episode details including stream URL, mirrors, and download links
+ * Fetches episode details including stream URL, mirrors, and download links from /anime/getvideo
  */
 export async function fetchEpisodeDetailApi(episodeSlug: string): Promise<EpisodeDetailData | null> {
-  const url = `${ANIME_API_BASE}/episode/${episodeSlug}`;
-  try {
-    const res = await fetch(url, {
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) {
-      throw new Error(`HTTP error ${res.status}`);
+  const urls = [
+    `${ANIME_API_BASE}/anime/getvideo?slug=${encodeURIComponent(episodeSlug)}`,
+    `${ANIME_API_BASE}/anime/getvideo?url=${encodeURIComponent(episodeSlug)}`,
+    `${ANIME_API_BASE}/anime/getvideo/${episodeSlug}`,
+    `${ANIME_API_BASE}/episode/${episodeSlug}`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) continue;
+
+      const json = await res.json();
+      const data = json.data || (json.stream_url || json.mirrors || json.downloads || json.title ? json : null);
+
+      if (data) {
+        return data as EpisodeDetailData;
+      }
+    } catch (err) {
+      console.warn(`Episode detail API error at ${url}:`, err);
     }
-    const json = await res.json();
-    if (json.ok && json.data) {
-      return json.data as EpisodeDetailData;
-    }
-    if (json.stream_url || json.mirrors || json.downloads || json.title) {
-      return json as EpisodeDetailData;
-    }
-    return null;
-  } catch (err) {
-    console.warn(`Episode detail API error for "${episodeSlug}":`, err);
-    return null;
   }
+
+  return null;
 }
 
 /**
