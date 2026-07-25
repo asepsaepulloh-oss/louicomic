@@ -61,13 +61,14 @@ export const MangaCard: React.FC<MangaCardProps> = ({
         <button
           onClick={(e) => onToggleBookmark(manga, e)}
           title={isBookmarked ? 'Hapus dari Bookmark' : 'Tambah ke Bookmark'}
-          className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-md transition-all duration-200 z-10 ${
+          aria-label={isBookmarked ? 'Hapus dari Bookmark' : 'Tambah ke Bookmark'}
+          className={`absolute top-2 right-2 p-2.5 min-w-[42px] min-h-[42px] flex items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 z-10 cursor-pointer ${
             isBookmarked
-              ? 'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30 scale-110'
-              : 'bg-slate-900/70 text-slate-300 hover:text-rose-400 hover:bg-slate-900/90'
+              ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40 scale-105'
+              : 'bg-slate-900/80 text-slate-200 hover:text-rose-400 hover:bg-slate-900'
           }`}
         >
-          <Heart className={`w-4 h-4 ${isBookmarked ? 'fill-current' : ''}`} />
+          <Heart className={`w-5 h-5 ${isBookmarked ? 'fill-current text-white' : ''}`} />
         </button>
 
         {/* Read Badge Overlay */}
