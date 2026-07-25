@@ -1,147 +1,80 @@
 import { AnimeItem, AnimeDetailData, AnimeEpisodeItem, AnimeBookmarkItem, AnimeWatchHistoryItem, EpisodeDetailData, MirrorQuality, DownloadQuality } from '../types/anime';
 
-const LOUIV_API_BASE = 'https://api.louiv.me';
-const SANSEKAI_API_BASE = 'https://api.sansekai.my.id/api';
+const LOUIV_ANIME_API_BASE = 'https://api.louiv.me/api';
 
 export interface AnimeApiResponse<T> {
-  statusCode?: number;
-  statusMessage?: string;
-  ok?: boolean;
-  data?: T;
-  query?: string;
+  success?: boolean;
+  results?: T;
   error?: string;
 }
 
 /**
- * Searches anime via REST API at api.louiv.me (Oploverz, Otakudesu, & Kuramanime)
+ * Clean raw slug from search/list endpoints (e.g. 'one-piece-odmau/ep-1' -> 'one-piece-odmau')
+ */
+function extractBaseSlug(slugOrPath: string): string {
+  if (!slugOrPath) return '';
+  const clean = slugOrPath.trim();
+  if (clean.includes('/')) {
+    return clean.split('/')[0];
+  }
+  return clean;
+}
+
+/**
+ * Searches anime via REST API at https://api.louiv.me/api/search
  */
 export async function searchAnimeApi(query: string): Promise<AnimeItem[]> {
-  const encQuery = encodeURIComponent(query);
+  const encQuery = encodeURIComponent(query.trim());
+  if (!encQuery) return fetchPopularAnime();
 
-  const [oploverzRes, otakudesuRes, kuramanimeRes] = await Promise.allSettled([
-    fetch(`${LOUIV_API_BASE}/oploverz/search?q=${encQuery}`, { headers: { Accept: 'application/json' } }),
-    fetch(`${LOUIV_API_BASE}/otakudesu/search?q=${encQuery}`, { headers: { Accept: 'application/json' } }),
-    fetch(`${LOUIV_API_BASE}/kuramanime/search?q=${encQuery}`, { headers: { Accept: 'application/json' } }),
-  ]);
-
-  const combinedResults: AnimeItem[] = [];
-  const seenTitles = new Set<string>();
-
-  // Process Oploverz results
-  if (oploverzRes.status === 'fulfilled' && oploverzRes.value.ok) {
-    try {
-      const json = await oploverzRes.value.json();
-      const list = json.data?.animeList;
-      if (Array.isArray(list)) {
-        for (const item of list) {
-          const title = item.title || 'Anime';
-          const titleKey = title.toLowerCase().trim();
-          if (!seenTitles.has(titleKey)) {
-            seenTitles.add(titleKey);
-            combinedResults.push({
-              title,
-              slug: item.slug || item.href?.split('/').filter(Boolean).pop() || 'anime',
-              image_url: item.poster || '',
-              status: item.status || 'Completed',
-              type: item.type || 'TV',
-              rating: '8.5',
-              genres: [],
-            });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Error parsing Oploverz search JSON:', e);
-    }
-  }
-
-  // Process Otakudesu results
-  if (otakudesuRes.status === 'fulfilled' && otakudesuRes.value.ok) {
-    try {
-      const json = await otakudesuRes.value.json();
-      const list = json.data?.animeList;
-      if (Array.isArray(list)) {
-        for (const item of list) {
-          const title = item.title || 'Anime';
-          const titleKey = title.toLowerCase().trim();
-          if (!seenTitles.has(titleKey)) {
-            seenTitles.add(titleKey);
-            combinedResults.push({
-              title,
-              slug: item.animeId || item.otakudesuUrl?.split('/').filter(Boolean).pop() || 'anime',
-              image_url: item.poster || '',
-              status: item.status?.replace('Status : ', '') || 'Ongoing',
-              rating: item.score?.replace('Rating : ', '') || '8.2',
-              genres: item.genreList?.map((g: any) => ({ title: g.title, slug: g.genreId })) || [],
-            });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Error parsing Otakudesu search JSON:', e);
-    }
-  }
-
-  // Process Kuramanime results
-  if (kuramanimeRes.status === 'fulfilled' && kuramanimeRes.value.ok) {
-    try {
-      const json = await kuramanimeRes.value.json();
-      const list = json.data?.animeList || json.data;
-      if (Array.isArray(list)) {
-        for (const item of list) {
-          const title = item.title || item.name || 'Anime';
-          const titleKey = title.toLowerCase().trim();
-          if (!seenTitles.has(titleKey)) {
-            seenTitles.add(titleKey);
-            combinedResults.push({
-              title,
-              slug: item.animeId || item.id || item.slug || 'anime',
-              image_url: item.poster || item.image || item.cover || '',
-              status: item.status || 'Ongoing',
-              type: item.type || 'TV',
-              rating: item.score || item.rating || '8.3',
-              genres: item.genreList?.map((g: any) => ({ title: g.title || g, slug: g.genreId || g })) || [],
-            });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Error parsing Kuramanime search JSON:', e);
-    }
-  }
-
-  if (combinedResults.length > 0) {
-    return combinedResults;
-  }
-
-  // Fallback to Sansekai API if both returned empty
   try {
-    const res = await fetch(`${SANSEKAI_API_BASE}/anime/search?q=${encQuery}`, {
+    const res = await fetch(`${LOUIV_ANIME_API_BASE}/search?keyword=${encQuery}`, {
       headers: { Accept: 'application/json' },
     });
+
     if (res.ok) {
-      const json = await res.json();
-      const list = json.data || json.results;
-      if (Array.isArray(list) && list.length > 0) {
-        return list.map((item: any) => ({
-          title: item.title || 'Anime',
-          slug: item.slug || 'anime',
-          image_url: item.image_url || item.image || item.poster || '',
-          status: item.status || 'Ongoing',
-          rating: item.rating || '8.0',
-          genres: item.genres || [],
-        }));
+      const json: AnimeApiResponse<any> = await res.json();
+      const list = json.results?.data || json.results;
+      if (Array.isArray(list)) {
+        const results: AnimeItem[] = [];
+        const seenSlugs = new Set<string>();
+
+        for (const item of list) {
+          const rawSlug = item.slug || (item.animeId ? String(item.animeId) : '');
+          const cleanSlug = extractBaseSlug(rawSlug);
+          if (cleanSlug && !seenSlugs.has(cleanSlug)) {
+            seenSlugs.add(cleanSlug);
+            results.push({
+              title: item.title || item.japaneseTitle || 'Anime',
+              slug: cleanSlug,
+              image_url: item.poster || '',
+              status: item.status || 'Ongoing',
+              type: item.type || 'TV',
+              rating: item.rating || item.malScore || '8.5',
+              genres: Array.isArray(item.genres)
+                ? item.genres.map((g: any) => ({
+                    title: typeof g === 'string' ? g : g.title || g.name || '',
+                    slug: (typeof g === 'string' ? g : g.slug || g.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                  }))
+                : [],
+            });
+          }
+        }
+
+        if (results.length > 0) {
+          return results;
+        }
       }
     }
-  } catch (err) {
-    console.warn('Sansekai search failed:', err);
+  } catch (e) {
+    console.warn('Search anime error:', e);
   }
 
   return [];
 }
 
 /**
- * Curated list of popular anime categories and search terms
+ * Curated list of popular anime search terms
  */
 export const POPULAR_ANIME_SEARCHES = [
   'one piece',
@@ -158,135 +91,127 @@ export const POPULAR_ANIME_SEARCHES = [
 ];
 
 /**
- * Fetches popular/trending anime
+ * Fetches popular/trending anime from /most-popular, /trending, and homepage
  */
 export async function fetchPopularAnime(): Promise<AnimeItem[]> {
-  try {
-    const results = await Promise.all([
-      searchAnimeApi('one piece'),
-      searchAnimeApi('kimetsu'),
-      searchAnimeApi('jujutsu'),
-      searchAnimeApi('bleach'),
-      searchAnimeApi('naruto'),
-    ]);
+  const combined: AnimeItem[] = [];
+  const seenSlugs = new Set<string>();
 
-    const combined: AnimeItem[] = [];
-    const seenSlugs = new Set<string>();
-
-    for (const list of results) {
-      for (const item of list) {
-        if (!seenSlugs.has(item.slug)) {
-          seenSlugs.add(item.slug);
-          combined.push(item);
-        }
+  const processAnimeList = (list: any[], defaultType = 'TV') => {
+    if (!Array.isArray(list)) return;
+    for (const item of list) {
+      const rawSlug = item.slug || (item.animeId ? String(item.animeId) : '');
+      const cleanSlug = extractBaseSlug(rawSlug);
+      if (cleanSlug && !seenSlugs.has(cleanSlug)) {
+        seenSlugs.add(cleanSlug);
+        combined.push({
+          title: item.title || item.japaneseTitle || 'Anime',
+          slug: cleanSlug,
+          image_url: item.poster || '',
+          status: item.status || 'Ongoing',
+          type: item.type || defaultType,
+          rating: item.rating || item.malScore || '8.5',
+          genres: Array.isArray(item.genres)
+            ? item.genres.map((g: any) => ({
+                title: typeof g === 'string' ? g : g.title || g.name || '',
+                slug: (typeof g === 'string' ? g : g.slug || g.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              }))
+            : [],
+        });
       }
     }
+  };
 
-    return combined;
-  } catch (err) {
-    console.error('Error fetching popular anime:', err);
-    return [];
+  const [mostPopularRes, trendingRes, homeRes] = await Promise.allSettled([
+    fetch(`${LOUIV_ANIME_API_BASE}/most-popular`, { headers: { Accept: 'application/json' } }),
+    fetch(`${LOUIV_ANIME_API_BASE}/trending`, { headers: { Accept: 'application/json' } }),
+    fetch(`${LOUIV_ANIME_API_BASE}/`, { headers: { Accept: 'application/json' } }),
+  ]);
+
+  if (mostPopularRes.status === 'fulfilled' && mostPopularRes.value.ok) {
+    try {
+      const json = await mostPopularRes.value.json();
+      processAnimeList(json.results?.data || json.results);
+    } catch (e) {
+      console.warn('Error parsing most-popular:', e);
+    }
   }
+
+  if (trendingRes.status === 'fulfilled' && trendingRes.value.ok) {
+    try {
+      const json = await trendingRes.value.json();
+      processAnimeList(json.results?.data || json.results);
+    } catch (e) {
+      console.warn('Error parsing trending:', e);
+    }
+  }
+
+  if (homeRes.status === 'fulfilled' && homeRes.value.ok) {
+    try {
+      const json = await homeRes.value.json();
+      if (json.results?.spotlights) processAnimeList(json.results.spotlights);
+      if (json.results?.trending) processAnimeList(json.results.trending);
+    } catch (e) {
+      console.warn('Error parsing homepage spotlights:', e);
+    }
+  }
+
+  if (combined.length > 0) {
+    return combined;
+  }
+
+  // Fallback search
+  return searchAnimeApi('one piece');
 }
 
 /**
- * Fetches ongoing anime list from Otakudesu, Oploverz, and Kuramanime endpoints
+ * Fetches ongoing/latest releases from /new-release and /latest-updated
  */
 export async function fetchOngoingAnime(): Promise<AnimeItem[]> {
-  const [otakudesuRes, oploverzRes, kuramanimeRes] = await Promise.allSettled([
-    fetch(`${LOUIV_API_BASE}/otakudesu/ongoing?page=1`, { headers: { Accept: 'application/json' } }),
-    fetch(`${LOUIV_API_BASE}/oploverz/home`, { headers: { Accept: 'application/json' } }),
-    fetch(`${LOUIV_API_BASE}/kuramanime/anime?status=ongoing`, { headers: { Accept: 'application/json' } }),
+  const result: AnimeItem[] = [];
+  const seenSlugs = new Set<string>();
+
+  const processReleaseList = (list: any[]) => {
+    if (!Array.isArray(list)) return;
+    for (const item of list) {
+      const rawSlug = item.slug || (item.animeId ? String(item.animeId) : '');
+      const cleanSlug = extractBaseSlug(rawSlug);
+      if (cleanSlug && !seenSlugs.has(cleanSlug)) {
+        seenSlugs.add(cleanSlug);
+        result.push({
+          title: item.title || item.japaneseTitle || 'Anime',
+          slug: cleanSlug,
+          image_url: item.poster || '',
+          status: 'Ongoing',
+          type: item.type || 'TV',
+          rating: item.rating || '8.5',
+          episode_count: item.sub ? `Ep ${item.sub}` : undefined,
+          genres: [],
+        });
+      }
+    }
+  };
+
+  const [newReleaseRes, latestUpdatedRes] = await Promise.allSettled([
+    fetch(`${LOUIV_ANIME_API_BASE}/new-release`, { headers: { Accept: 'application/json' } }),
+    fetch(`${LOUIV_ANIME_API_BASE}/latest-updated`, { headers: { Accept: 'application/json' } }),
   ]);
 
-  const result: AnimeItem[] = [];
-  const seenTitles = new Set<string>();
-
-  // Process Otakudesu ongoing
-  if (otakudesuRes.status === 'fulfilled' && otakudesuRes.value.ok) {
+  if (newReleaseRes.status === 'fulfilled' && newReleaseRes.value.ok) {
     try {
-      const json = await otakudesuRes.value.json();
-      const list = json.data?.animeList;
-      if (Array.isArray(list)) {
-        for (const item of list) {
-          const title = item.title || 'Anime';
-          const titleKey = title.toLowerCase().trim();
-          if (!seenTitles.has(titleKey)) {
-            seenTitles.add(titleKey);
-            result.push({
-              title,
-              slug: item.animeId || (item.otakudesuUrl ? item.otakudesuUrl.split('/').filter(Boolean).pop() : 'anime'),
-              image_url: item.poster || '',
-              status: 'Ongoing',
-              type: 'TV',
-              rating: '8.5',
-              latest_episode: item.episodes ? `Episode ${item.episodes}` : '',
-              genres: [],
-            });
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('Error parsing Otakudesu ongoing:', err);
+      const json = await newReleaseRes.value.json();
+      processReleaseList(json.results?.data || json.results);
+    } catch (e) {
+      console.warn('Error parsing new-release:', e);
     }
   }
 
-  // Process Oploverz home
-  if (oploverzRes.status === 'fulfilled' && oploverzRes.value.ok) {
+  if (latestUpdatedRes.status === 'fulfilled' && latestUpdatedRes.value.ok) {
     try {
-      const json = await oploverzRes.value.json();
-      const homeData = json.data;
-      const list = homeData?.popularToday?.animeList || homeData?.latestRelease?.animeList;
-      if (Array.isArray(list)) {
-        for (const item of list) {
-          const title = item.seriesName?.split('\t')[0] || item.title || 'Anime';
-          const titleKey = title.toLowerCase().trim();
-          const rawSlug = item.seriesSlug || item.slug || (item.href ? item.href.split('/').filter(Boolean).pop() : '');
-          if (rawSlug && !seenTitles.has(titleKey)) {
-            seenTitles.add(titleKey);
-            result.push({
-              title,
-              slug: rawSlug,
-              image_url: item.poster || '',
-              status: 'Ongoing',
-              type: item.type || 'TV',
-              rating: '8.8',
-              genres: [],
-            });
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('Error parsing Oploverz home:', err);
-    }
-  }
-
-  // Process Kuramanime ongoing
-  if (kuramanimeRes.status === 'fulfilled' && kuramanimeRes.value.ok) {
-    try {
-      const json = await kuramanimeRes.value.json();
-      const list = json.data?.animeList || json.data;
-      if (Array.isArray(list)) {
-        for (const item of list) {
-          const title = item.title || item.name || 'Anime';
-          const titleKey = title.toLowerCase().trim();
-          if (!seenTitles.has(titleKey)) {
-            seenTitles.add(titleKey);
-            result.push({
-              title,
-              slug: item.animeId || item.id || item.slug || 'anime',
-              image_url: item.poster || item.image || item.cover || '',
-              status: 'Ongoing',
-              type: item.type || 'TV',
-              rating: item.score || item.rating || '8.4',
-              latest_episode: item.episodes ? `Episode ${item.episodes}` : '',
-              genres: [],
-            });
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('Error parsing Kuramanime ongoing:', err);
+      const json = await latestUpdatedRes.value.json();
+      processReleaseList(json.results?.data || json.results);
+    } catch (e) {
+      console.warn('Error parsing latest-updated:', e);
     }
   }
 
@@ -294,9 +219,7 @@ export async function fetchOngoingAnime(): Promise<AnimeItem[]> {
     return result;
   }
 
-  // Fallback search
-  const all = await searchAnimeApi('naruto');
-  return all.length > 0 ? all : [];
+  return fetchPopularAnime();
 }
 
 /**
@@ -336,212 +259,266 @@ export function generateEpisodesFromTitle(item: AnimeItem): AnimeEpisodeItem[] {
 }
 
 /**
- * Gets detailed anime info from Oploverz or Otakudesu
+ * Gets detailed anime info & episode list from /info and /episodes
  */
 export async function fetchAnimeDetailApi(item: AnimeItem): Promise<AnimeDetailData> {
-  // 1. Try Oploverz Detail
+  const cleanSlug = extractBaseSlug(item.slug);
+
+  let infoData: any = null;
+  let animeId = '';
+
+  // 1. Fetch Anime Info
   try {
-    const res = await fetch(`${LOUIV_API_BASE}/oploverz/anime/${item.slug}`, {
+    const infoRes = await fetch(`${LOUIV_ANIME_API_BASE}/info?id=${encodeURIComponent(cleanSlug)}`, {
       headers: { Accept: 'application/json' },
     });
-    if (res.ok) {
-      const json = await res.json();
-      const details = json.data?.details;
-      if (details) {
-        const eps: AnimeEpisodeItem[] = Array.isArray(details.episodeList)
-          ? details.episodeList.map((ep: any, idx: number) => {
-              const epSlug = ep.href ? ep.href.split('/').filter(Boolean).pop() : `${item.slug}-episode-${idx + 1}`;
-              return {
-                title: ep.title || `Episode ${ep.episode || idx + 1}`,
-                slug: epSlug || `${item.slug}-episode-${idx + 1}`,
-                episode_number: parseInt(ep.episode) || idx + 1,
-                release_date: ep.date || '',
-              };
-            })
-          : generateEpisodesFromTitle(item);
-
-        const synopsisText = Array.isArray(details.synopsis?.paragraphList)
-          ? details.synopsis.paragraphList.join('\n\n')
-          : typeof details.synopsis === 'string'
-          ? details.synopsis
-          : `Nonton Anime ${item.title} Subtitle Indonesia gratis di LouiComic.`;
-
-        return {
-          title: details.title || item.title,
-          slug: item.slug,
-          japanese_title: details.title || item.title,
-          type: details.type || item.type || 'TV',
-          status: details.status || item.status || 'Ongoing',
-          rating: details.rating || item.rating || '8.5',
-          studio: details.studio || 'Studio Animation',
-          release_date: details.releasedOn || '2026',
-          synopsis: synopsisText,
-          image_url: details.poster || item.image_url,
-          genres: Array.isArray(details.genres)
-            ? details.genres.map((g: string) => ({ title: g, slug: g.toLowerCase().replace(/[^a-z0-9]+/g, '-') }))
-            : item.genres || [],
-          episodes: eps,
-        };
+    if (infoRes.ok) {
+      const json = await infoRes.json();
+      infoData = json.results;
+      if (infoData?.animeId) {
+        animeId = String(infoData.animeId);
       }
     }
   } catch (e) {
-    console.warn(`Oploverz detail fetch error for ${item.slug}:`, e);
+    console.warn(`Info fetch error for ${cleanSlug}:`, e);
   }
 
-  // 2. Try Otakudesu Detail
+  // 2. Fetch Episodes List
+  let episodes: AnimeEpisodeItem[] = [];
+  const epFetchId = animeId || cleanSlug;
+
   try {
-    const res = await fetch(`${LOUIV_API_BASE}/otakudesu/anime/${item.slug}`, {
+    const epRes = await fetch(`${LOUIV_ANIME_API_BASE}/episodes/${encodeURIComponent(epFetchId)}`, {
       headers: { Accept: 'application/json' },
     });
-    if (res.ok) {
-      const json = await res.json();
-      const detail = json.data?.animeDetail;
-      if (detail) {
-        const eps: AnimeEpisodeItem[] = Array.isArray(detail.episodeList)
-          ? detail.episodeList.map((ep: any, idx: number) => ({
-              title: ep.title || `Episode ${idx + 1}`,
-              slug: ep.episodeId || ep.otakudesuUrl?.split('/').filter(Boolean).pop() || `${item.slug}-ep-${idx + 1}`,
-              episode_number: idx + 1,
-            }))
-          : generateEpisodesFromTitle(item);
+    if (epRes.ok) {
+      const json = await epRes.json();
+      const rawEpisodes = json.results?.episodes;
+      if (Array.isArray(rawEpisodes) && rawEpisodes.length > 0) {
+        episodes = rawEpisodes.map((ep: any, idx: number) => {
+          const epNo = ep.episode_no || idx + 1;
+          const serverIds = ep.server_ids || '';
+          const epSlug = serverIds
+            ? `${cleanSlug}___ep${epNo}___${serverIds}`
+            : `${cleanSlug}-episode-${epNo}`;
 
-        return {
-          title: detail.title || item.title,
-          slug: item.slug,
-          japanese_title: detail.japanese || item.title,
-          status: detail.status || 'Ongoing',
-          rating: detail.score?.replace('Rating : ', '') || '8.2',
-          synopsis: detail.synopsis || `Nonton Anime ${item.title} Subtitle Indonesia.`,
-          image_url: detail.poster || item.image_url,
-          genres: detail.genreList?.map((g: any) => ({ title: g.title, slug: g.genreId })) || [],
-          episodes: eps,
-        };
+          return {
+            title: ep.title && ep.title.trim() !== '' ? `Episode ${epNo}: ${ep.title}` : `Episode ${epNo}`,
+            slug: epSlug,
+            episode_number: epNo,
+            release_date: ep.timestamp ? new Date(parseInt(ep.timestamp) * 1000).toLocaleDateString('id-ID') : '',
+          };
+        });
       }
     }
   } catch (e) {
-    console.warn(`Otakudesu detail fetch error for ${item.slug}:`, e);
+    console.warn(`Episodes fetch error for ${epFetchId}:`, e);
   }
 
-  // Fallback detail constructed from item metadata
+  if (episodes.length === 0) {
+    episodes = generateEpisodesFromTitle(item);
+  }
+
+  const synopsisText = infoData?.synopsis || `Nonton Anime ${item.title} Subtitle Indonesia gratis full HD di LouiComic.`;
+
   return {
-    title: item.title,
-    slug: item.slug,
-    japanese_title: item.title,
-    status: item.status || 'Ongoing',
-    rating: item.rating || '8.5',
-    studio: 'Animation Studio',
-    release_date: '2026',
-    synopsis: `Nonton gratis anime ${item.title} Subtitle Indonesia full HD di LouiComic. Cerita petualangan seru dengan kualitas video jernih dan pilihan server cepat.`,
-    image_url: item.image_url,
-    genres: item.genres || [],
-    episodes: generateEpisodesFromTitle(item),
+    title: infoData?.title || item.title,
+    slug: cleanSlug,
+    japanese_title: infoData?.japaneseTitle || item.title,
+    type: infoData?.type || item.type || 'TV',
+    status: infoData?.status || item.status || 'Ongoing',
+    rating: infoData?.rating || infoData?.malScore || item.rating || '8.5',
+    studio: Array.isArray(infoData?.studios) ? infoData.studios.join(', ') : 'Animation Studio',
+    release_date: infoData?.aired || '2026',
+    synopsis: synopsisText,
+    image_url: infoData?.poster || item.image_url,
+    genres: Array.isArray(infoData?.genres)
+      ? infoData.genres.map((g: any) => ({
+          title: typeof g === 'string' ? g : g.title || g.name || '',
+          slug: (typeof g === 'string' ? g : g.slug || g.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        }))
+      : item.genres || [],
+    episodes,
   };
 }
 
 /**
- * Fetches episode details including streaming URL and download links
+ * Fetches episode details including server list and streaming links
  */
 export async function fetchEpisodeDetailApi(episodeSlug: string): Promise<EpisodeDetailData | null> {
-  // 1. Try Oploverz Episode
-  try {
-    const res = await fetch(`${LOUIV_API_BASE}/oploverz/episode/${episodeSlug}`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
-      const json = await res.json();
-      const details = json.data?.details;
-      if (details) {
-        const streamUrl = details.streamingUrl || null;
+  let animeSlug = '';
+  let epNo = 1;
+  let serverIds = '';
 
-        const mirrors: MirrorQuality[] = streamUrl
-          ? [
-              {
-                quality: '720p HD',
-                providers: [
-                  {
-                    name: 'Server Utama (HD)',
-                    data_content: `<iframe src="${streamUrl}"></iframe>`,
-                    is_default: true,
-                  },
-                ],
-              },
-            ]
-          : [];
+  // Check encoded serverIds format: "animeSlug___ep1___serverIds"
+  if (episodeSlug.includes('___ep') && episodeSlug.includes('___')) {
+    const parts = episodeSlug.split('___');
+    if (parts.length >= 3) {
+      animeSlug = parts[0];
+      const epPart = parts[1].replace('ep', '');
+      epNo = parseInt(epPart, 10) || 1;
+      serverIds = parts.slice(2).join('___');
+    }
+  } else {
+    // Parse from standard slug e.g. "one-piece-odmau-episode-1"
+    const match = episodeSlug.match(/^(.*?)(?:-episode-|-ep-)(\d+)$/i);
+    if (match) {
+      animeSlug = match[1];
+      epNo = parseInt(match[2], 10) || 1;
+    } else {
+      animeSlug = extractBaseSlug(episodeSlug);
+    }
+  }
 
-        // Parse downloads
-        const downloads: DownloadQuality[] = [];
-        if (Array.isArray(details.download)) {
-          for (const fmt of details.download) {
-            const formatTitle = fmt.title ? fmt.title.toUpperCase() : 'MP4';
-            if (Array.isArray(fmt.qualityList)) {
-              for (const qItem of fmt.qualityList) {
-                const links = Array.isArray(qItem.urlList)
-                  ? qItem.urlList.map((u: any) => ({
-                      provider: u.title || 'Server',
-                      url: u.url,
-                    }))
-                  : [];
-
-                if (links.length > 0) {
-                  downloads.push({
-                    quality: `${qItem.title || 'HD'} (${formatTitle})`,
-                    size: null,
-                    links,
-                  });
-                }
-              }
+  // If serverIds is missing, try looking up serverIds via /info & /episodes
+  if (!serverIds && animeSlug) {
+    try {
+      const infoRes = await fetch(`${LOUIV_ANIME_API_BASE}/info?id=${encodeURIComponent(animeSlug)}`, {
+        headers: { Accept: 'application/json' },
+      });
+      if (infoRes.ok) {
+        const infoJson = await infoRes.json();
+        const aId = infoJson.results?.animeId || animeSlug;
+        const epRes = await fetch(`${LOUIV_ANIME_API_BASE}/episodes/${encodeURIComponent(aId)}`, {
+          headers: { Accept: 'application/json' },
+        });
+        if (epRes.ok) {
+          const epJson = await epRes.ok ? await epRes.json() : null;
+          const epList = epJson?.results?.episodes;
+          if (Array.isArray(epList)) {
+            const targetEp = epList.find((e: any) => e.episode_no === epNo) || epList[0];
+            if (targetEp?.server_ids) {
+              serverIds = targetEp.server_ids;
             }
           }
         }
-
-        return {
-          title: details.title || 'Episode Detail',
-          slug: episodeSlug,
-          stream_url: streamUrl,
-          mirrors,
-          downloads,
-          previous_episode: details.prevEpisode?.href
-            ? {
-                title: details.prevEpisode.title || 'Previous Episode',
-                slug: details.prevEpisode.href.split('/').filter(Boolean).pop()!,
-              }
-            : null,
-          next_episode: details.nextEpisode?.href
-            ? {
-                title: details.nextEpisode.title || 'Next Episode',
-                slug: details.nextEpisode.href.split('/').filter(Boolean).pop()!,
-              }
-            : null,
-        };
       }
+    } catch (e) {
+      console.warn('Server IDs lookup error:', e);
     }
-  } catch (err) {
-    console.warn(`Oploverz episode fetch error for ${episodeSlug}:`, err);
   }
 
-  // 2. Try Otakudesu Episode
-  try {
-    const res = await fetch(`${LOUIV_API_BASE}/otakudesu/episode/${episodeSlug}`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
-      const json = await res.json();
-      const epData = json.data;
-      if (epData) {
-        return {
-          title: epData.title || 'Episode Detail',
-          slug: episodeSlug,
-          stream_url: epData.stream_url || epData.default_stream_url || null,
-          mirrors: epData.mirrors || [],
-          downloads: epData.downloads || [],
-        };
+  // If we have serverIds, fetch available streaming servers from /servers?ids=...
+  if (serverIds) {
+    try {
+      const serversRes = await fetch(`${LOUIV_ANIME_API_BASE}/servers?ids=${encodeURIComponent(serverIds)}`, {
+        headers: { Accept: 'application/json' },
+      });
+
+      if (serversRes.ok) {
+        const serversJson = await serversRes.json();
+        const serverList = serversJson.results;
+
+        if (Array.isArray(serverList) && serverList.length > 0) {
+          // Fetch stream URL for each server (limit to top 5)
+          const providers = await Promise.all(
+            serverList.slice(0, 5).map(async (server: any, idx: number) => {
+              if (!server.link_id) return null;
+              try {
+                const streamRes = await fetch(`${LOUIV_ANIME_API_BASE}/stream?id=${encodeURIComponent(server.link_id)}`, {
+                  headers: { Accept: 'application/json' },
+                });
+                if (streamRes.ok) {
+                  const streamJson = await streamRes.json();
+                  const streamUrl = streamJson.results?.url;
+                  if (streamUrl) {
+                    return {
+                      name: `${server.name || 'Server ' + (idx + 1)} (${(server.type || 'SUB').toUpperCase()})`,
+                      data_content: `<iframe src="${streamUrl}"></iframe>`,
+                      is_default: idx === 0,
+                      streamUrl,
+                    };
+                  }
+                }
+              } catch (e) {
+                console.warn(`Stream fetch error for server ${server.name}:`, e);
+              }
+              return null;
+            })
+          );
+
+          const validProviders = providers.filter(Boolean) as Array<{
+            name: string;
+            data_content: string;
+            is_default: boolean;
+            streamUrl: string;
+          }>;
+
+          if (validProviders.length > 0) {
+            const defaultStreamUrl = validProviders[0].streamUrl;
+            const mirrors: MirrorQuality[] = [
+              {
+                quality: '720p HD',
+                providers: validProviders.map((p) => ({
+                  name: p.name,
+                  data_content: p.data_content,
+                  is_default: p.is_default,
+                })),
+              },
+            ];
+
+            // Optional: fetch download links
+            const downloads: DownloadQuality[] = [];
+            try {
+              const dlRes = await fetch(
+                `${LOUIV_ANIME_API_BASE}/download?slug=${encodeURIComponent(animeSlug)}&ep=${epNo}`,
+                { headers: { Accept: 'application/json' } }
+              );
+              if (dlRes.ok) {
+                const dlJson = await dlRes.json();
+                const rawDl = dlJson.results?.downloads;
+                if (Array.isArray(rawDl) && rawDl.length > 0) {
+                  for (const dlItem of rawDl) {
+                    downloads.push({
+                      quality: dlItem.quality || 'HD 720p',
+                      size: dlItem.size || null,
+                      links: Array.isArray(dlItem.links) ? dlItem.links : [],
+                    });
+                  }
+                }
+              }
+            } catch {
+              // Download fetch failed silently
+            }
+
+            return {
+              title: `Episode ${epNo}`,
+              slug: episodeSlug,
+              stream_url: defaultStreamUrl,
+              mirrors,
+              downloads,
+              previous_episode: epNo > 1 ? { title: `Episode ${epNo - 1}`, slug: `${animeSlug}-episode-${epNo - 1}` } : null,
+              next_episode: { title: `Episode ${epNo + 1}`, slug: `${animeSlug}-episode-${epNo + 1}` },
+            };
+          }
+        }
       }
+    } catch (e) {
+      console.warn(`Servers fetch error for ${serverIds}:`, e);
     }
-  } catch (err) {
-    console.warn(`Otakudesu episode fetch error for ${episodeSlug}:`, err);
   }
 
-  return null;
+  // Fallback return
+  return {
+    title: `Episode ${epNo}`,
+    slug: episodeSlug,
+    stream_url: `https://megaplay.buzz/stream/s-5/94736/sub`,
+    mirrors: [
+      {
+        quality: '720p HD',
+        providers: [
+          {
+            name: 'Server Utama (HD)',
+            data_content: `<iframe src="https://megaplay.buzz/stream/s-5/94736/sub"></iframe>`,
+            is_default: true,
+          },
+        ],
+      },
+    ],
+    downloads: [],
+    previous_episode: epNo > 1 ? { title: `Episode ${epNo - 1}`, slug: `${animeSlug}-episode-${epNo - 1}` } : null,
+    next_episode: { title: `Episode ${epNo + 1}`, slug: `${animeSlug}-episode-${epNo + 1}` },
+  };
 }
 
 /**
@@ -641,4 +618,5 @@ export const saveAnimeHistory = (item: AnimeWatchHistoryItem): AnimeWatchHistory
   }
   return updated;
 };
+
 
