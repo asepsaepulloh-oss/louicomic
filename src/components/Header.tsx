@@ -126,47 +126,57 @@ export const Header: React.FC<HeaderProps> = ({
                 <UserButton
                   appearance={{
                     elements: {
-                      avatarBox: 'w-8 h-8 rounded-full border border-amber-500/40',
+                      avatarBox: 'w-9 h-9 rounded-full border border-amber-500/40',
                     },
                   }}
                 />
               ) : (
                 <button
                   onClick={openSignInModal}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
-                  title="Masuk ke Akun / Konfigurasi Clerk"
+                  className="flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
+                  title="Masuk ke Akun"
                 >
-                  <User className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
+                  <User className="w-4 h-4 fill-slate-950 text-slate-950" />
                   <span>Masuk</span>
                 </button>
               )}
             </div>
 
-            {/* Mobile Menu Toggle */}
+            {/* Mobile Menu Toggle Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+              className="lg:hidden p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer"
+              aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Search Bar & Menu Drawer */}
+        {/* Mobile Search Bar & Drawer */}
         {mobileMenuOpen && (
-          <div className="lg:hidden py-3 border-t border-slate-800 space-y-3 animate-fadeIn">
+          <div className="lg:hidden py-4 border-t border-slate-800/80 space-y-4 animate-fadeIn">
             <form onSubmit={handleSearchSubmit} className="relative">
               <input
                 type="text"
-                placeholder="Cari komik..."
+                placeholder="Cari komik atau genre..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full bg-slate-800 text-sm text-slate-100 placeholder-slate-400 rounded-lg pl-9 pr-8 py-2 border border-slate-700 focus:outline-none focus:border-amber-500"
+                className="w-full bg-slate-800 text-sm text-slate-100 placeholder-slate-400 rounded-xl pl-10 pr-10 py-3 min-h-[44px] border border-slate-700 focus:outline-none focus:border-amber-500"
               />
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => setSearchInput('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white text-sm"
+                >
+                  ✕
+                </button>
+              )}
             </form>
 
-            <div className="grid grid-cols-2 gap-1.5 pt-1">
+            <div className="grid grid-cols-2 gap-2 pt-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentTab === item.id;
@@ -177,16 +187,16 @@ export const Header: React.FC<HeaderProps> = ({
                       onSelectTab(item.id);
                       setMobileMenuOpen(false);
                     }}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+                    className={`flex items-center gap-2.5 px-3.5 py-3 min-h-[48px] rounded-xl text-sm font-semibold transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        : 'text-slate-300 bg-slate-800/50 hover:bg-slate-800'
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                        : 'text-slate-200 bg-slate-800/60 hover:bg-slate-800 border border-slate-800'
                     }`}
                   >
-                    <Icon className="w-4 h-4 text-amber-400" />
-                    <span>{item.label}</span>
+                    <Icon className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                    <span className="truncate">{item.label}</span>
                     {typeof item.count === 'number' && item.count > 0 && (
-                      <span className="ml-auto px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/30 text-amber-300 rounded-full">
+                      <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-amber-500/30 text-amber-300 rounded-full">
                         {item.count}
                       </span>
                     )}
@@ -200,10 +210,10 @@ export const Header: React.FC<HeaderProps> = ({
                     openSignInModal();
                     setMobileMenuOpen(false);
                   }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 col-span-2 transition-all cursor-pointer"
+                  className="flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] rounded-xl text-sm font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 col-span-2 shadow-lg transition-all cursor-pointer"
                 >
-                  <User className="w-4 h-4 fill-slate-950" />
-                  <span>Masuk ke Akun / Set Clerk Key</span>
+                  <User className="w-5 h-5 fill-slate-950" />
+                  <span>Masuk ke Akun / Konfigurasi Clerk</span>
                 </button>
               )}
             </div>
