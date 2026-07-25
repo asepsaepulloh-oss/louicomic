@@ -34,6 +34,9 @@ jobs:
       - name: Install Node Dependencies
         run: npm ci || npm install
 
+      - name: Generate Android App Icons & Splash
+        run: npm run generate:assets
+
       - name: Build Web App & Sync Capacitor
         env:
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
