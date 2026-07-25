@@ -61,13 +61,13 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
   return (
     <>
       {/* ================= TOP HEADER BAR ================= */}
-      <div className="fixed top-0 inset-x-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/90 text-slate-100 shadow-lg px-3 py-2 flex items-center justify-between gap-2 h-14">
+      <div className="fixed top-0 inset-x-0 z-50 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/90 text-slate-100 shadow-lg px-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] pb-3 flex items-center justify-between gap-2">
         
         {/* Left: Back & Title */}
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             onClick={onBackToDetail}
-            className="p-2 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-colors cursor-pointer"
+            className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-colors cursor-pointer flex-shrink-0"
             title="Kembali ke Detail Komik"
             aria-label="Kembali"
           >
@@ -75,7 +75,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
           </button>
           
           <div className="min-w-0 flex-1">
-            <h1 className="text-xs sm:text-sm font-bold text-white truncate max-w-[140px] sm:max-w-xs">
+            <h1 className="text-xs sm:text-sm font-bold text-white truncate max-w-[120px] sm:max-w-xs">
               {mangaTitle}
             </h1>
             <p className="text-[10px] sm:text-xs text-amber-400 font-bold truncate">
@@ -85,13 +85,13 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
         </div>
 
         {/* Right: Quick Settings / Mode / Fullscreen */}
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           
           {/* Mode Switcher */}
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-0.5">
             <button
               onClick={() => onChangeMode('webtoon')}
-              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
+              className={`p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
                 readerMode === 'webtoon' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
               }`}
               title="Mode Webtoon"
@@ -101,7 +101,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
             </button>
             <button
               onClick={() => onChangeMode('single')}
-              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
+              className={`p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
                 readerMode === 'single' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
               }`}
               title="Mode Halaman"
@@ -115,14 +115,14 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowColorPicker(!showColorPicker)}
-              className="p-2 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors cursor-pointer"
+              className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors cursor-pointer"
               title="Warna Latar"
             >
               <Palette className="w-4 h-4 text-amber-400" />
             </button>
 
             {showColorPicker && (
-              <div className="absolute right-0 top-11 p-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl flex items-center gap-2 z-50 animate-fadeIn">
+              <div className="absolute right-0 top-12 p-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl flex items-center gap-2 z-50 animate-fadeIn">
                 <button
                   onClick={() => { onChangeBgColor('black'); setShowColorPicker(false); }}
                   className={`w-6 h-6 rounded-full bg-black border ${bgColor === 'black' ? 'ring-2 ring-amber-400 border-white' : 'border-slate-700'}`}
@@ -151,7 +151,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
           {readerMode === 'webtoon' && (
             <button
               onClick={onToggleAutoScroll}
-              className={`p-2 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${
+              className={`p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${
                 autoScrollSpeed > 0
                   ? 'bg-amber-500 text-slate-950 border-amber-400'
                   : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white'
@@ -165,7 +165,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
           {/* Fullscreen Button */}
           <button
             onClick={onToggleFullscreen}
-            className="p-2 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-colors cursor-pointer"
+            className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-colors cursor-pointer"
             title="Layar Penuh"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -174,13 +174,13 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
       </div>
 
       {/* ================= BOTTOM NAVIGATION & SLIDER BAR ================= */}
-      <div className="fixed bottom-0 inset-x-0 z-50 bg-slate-950/95 backdrop-blur-md border-t border-slate-800/90 text-slate-100 shadow-2xl px-2 sm:px-4 py-2 flex items-center justify-between gap-1.5 sm:gap-3 h-16">
+      <div className="fixed bottom-0 inset-x-0 z-50 bg-slate-950/95 backdrop-blur-md border-t border-slate-800/90 text-slate-100 shadow-2xl px-2 sm:px-4 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] flex items-center justify-between gap-1.5 sm:gap-3">
         
         {/* Prev Chapter Button */}
         <button
           disabled={!prevChapter}
           onClick={() => prevChapter && onChangeChapter(prevChapter.url, prevChapter.name)}
-          className="px-2.5 py-2 min-h-[40px] flex items-center gap-1 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 disabled:opacity-30 text-xs font-bold transition-all cursor-pointer flex-shrink-0"
+          className="px-2.5 py-2 min-h-[42px] flex items-center gap-1 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 disabled:opacity-30 text-xs font-bold transition-all cursor-pointer flex-shrink-0"
           title="Chapter Sebelumnya"
         >
           <ChevronLeft className="w-4 h-4 text-amber-400" />
@@ -197,7 +197,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               const selected = chapters.find((c) => c.url === e.target.value);
               if (selected) onChangeChapter(selected.url, selected.name);
             }}
-            className="bg-slate-900 text-xs font-bold text-amber-300 border border-slate-800 rounded-xl px-2 py-2 min-h-[40px] focus:outline-none focus:border-amber-500 max-w-[110px] sm:max-w-[180px] truncate cursor-pointer flex-shrink-0"
+            className="bg-slate-900 text-xs font-bold text-amber-300 border border-slate-800 rounded-xl px-2 py-2 min-h-[42px] focus:outline-none focus:border-amber-500 max-w-[100px] sm:max-w-[180px] truncate cursor-pointer flex-shrink-0"
           >
             {chapters.map((ch) => (
               <option key={ch.url} value={ch.url}>
@@ -207,7 +207,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
           </select>
 
           {/* Page Progress Indicator & Range Slider */}
-          <div className="flex items-center gap-1.5 flex-1 min-w-0 bg-slate-900/80 px-2 py-1.5 rounded-xl border border-slate-800/80">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 bg-slate-900/80 px-2 py-1.5 rounded-xl border border-slate-800/80 min-h-[42px]">
             <span className="text-[11px] font-semibold text-slate-300 whitespace-nowrap hidden min-[400px]:inline">
               Hal <strong className="text-amber-400">{currentPage}</strong>/{totalPages || 1}
             </span>
@@ -232,7 +232,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
         <button
           disabled={!nextChapter}
           onClick={() => nextChapter && onChangeChapter(nextChapter.url, nextChapter.name)}
-          className="px-3 py-2 min-h-[40px] flex items-center gap-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold disabled:opacity-30 text-xs transition-all cursor-pointer shadow-md flex-shrink-0"
+          className="px-3 py-2 min-h-[42px] flex items-center gap-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold disabled:opacity-30 text-xs transition-all cursor-pointer shadow-md flex-shrink-0"
           title="Chapter Selanjutnya"
         >
           <span className="hidden sm:inline">Next</span>
