@@ -567,7 +567,7 @@ export async function getAnimeVideo(episodeId: string, reso: string = '720p'): P
     if (detail?.stream_url) {
       const isDirect = detail.stream_url.endsWith('.mp4') || detail.stream_url.endsWith('.m3u8');
       return {
-        url: isDirect ? detail.stream_url : `/api/stream-embed?url=${encodeURIComponent(detail.stream_url)}`,
+        url: detail.stream_url,
         type: isDirect ? 'direct' : 'embed',
         availableResolutions: ['360p', '480p', '720p', '1080p'],
       };
@@ -582,7 +582,7 @@ export async function getAnimeVideo(episodeId: string, reso: string = '720p'): P
   if (mirror && mirror.providers && mirror.providers.length > 0) {
     const defaultProvider = mirror.providers.find((p) => p.is_default) || mirror.providers[0];
     if (defaultProvider.data_content) {
-      rawUrl = extractStreamSrc(defaultProvider.data_content);
+      rawUrl = extractStreamSrc(defaultProvider.data_content) || '';
     }
   }
 
@@ -595,10 +595,9 @@ export async function getAnimeVideo(episodeId: string, reso: string = '720p'): P
   }
 
   const isDirect = rawUrl.endsWith('.mp4') || rawUrl.endsWith('.m3u8');
-  const finalUrl = isDirect ? rawUrl : `/api/stream-embed?url=${encodeURIComponent(rawUrl)}`;
 
   return {
-    url: finalUrl,
+    url: rawUrl,
     type: isDirect ? 'direct' : 'embed',
     availableResolutions,
   };
