@@ -255,14 +255,36 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
                 <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
                 <p className="text-xs font-medium animate-pulse">Memuat Video Stream Episode...</p>
               </div>
-            ) : isPlaying && selectedEpisode ? (
-              <div className="relative w-full bg-black">
-                <AnimeVideoPlayer
-                  episodeId={selectedEpisode.slug}
-                  animeUrlId={anime.slug}
-                  reso={selectedMirrorQuality}
-                  onResolutionChange={(r) => setSelectedMirrorQuality(r)}
-                />
+            ) : isPlaying ? (
+              <div className="relative w-full aspect-video bg-black group">
+                {activeStreamSrc ? (
+                  activeStreamSrc.endsWith('.mp4') || activeStreamSrc.endsWith('.m3u8') ? (
+                    <video
+                      key={activeStreamSrc}
+                      src={activeStreamSrc}
+                      poster={anime.image_url}
+                      controls
+                      autoPlay
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <iframe
+                      key={activeEmbedSrc || activeStreamSrc}
+                      src={activeEmbedSrc || activeStreamSrc}
+                      title={selectedEpisode?.title || anime.title}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                      allowFullScreen
+                      referrerPolicy="no-referrer"
+                    />
+                  )
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full p-8 text-center text-slate-400">
+                    <Film className="w-12 h-12 text-slate-600 mb-3" />
+                    <p className="text-sm font-semibold text-slate-200">Stream video tidak tersedia untuk server ini</p>
+                    <p className="text-xs text-slate-400 mt-1">Silakan pilih Server Provider lain di bawah</p>
+                  </div>
+                )}
 
                 {/* Top overlay player controls */}
                 <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
