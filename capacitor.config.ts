@@ -5,8 +5,18 @@ const config: CapacitorConfig = {
   appName: 'LouiComic',
   webDir: 'dist',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    allowNavigation: [
+      '*.clerk.com',
+      '*.clerk.accounts.dev',
+      'clerk.comic.louiv.me',
+      'comic.louiv.me',
+      '*.google.com',
+      '*.googleusercontent.com',
+      '*.github.com'
+    ]
   }
 };
 
 export default config;
+
