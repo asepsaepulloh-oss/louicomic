@@ -45,12 +45,13 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center justify-between h-16 gap-4">
           
           {/* Brand Logo */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => onSelectTab('home')}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-rose-600 p-0.5 shadow-md shadow-orange-500/20 flex items-center justify-center">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-amber-400" />
-              </div>
-            </div>
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => onSelectTab('home')}>
+            <img
+              src="/logo.svg"
+              alt="LouiComic Logo"
+              referrerPolicy="no-referrer"
+              className="w-10 h-10 rounded-xl shadow-md shadow-orange-500/20 border border-slate-800 group-hover:scale-105 transition-transform"
+            />
             <div>
               <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-amber-300 bg-clip-text text-transparent">
                 LouiComic
