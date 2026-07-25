@@ -188,10 +188,13 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
 
   const activeStreamSrc = getActiveStreamUrl();
 
-  // Stream URL used directly for video / iframe player
+  // Proxy third-party embed URLs through /api/stream-embed to prevent blank pages caused by anti-embed/sandbox restrictions on external sites like comic.louiv.me
   const getEmbedStreamUrl = (url: string | null): string | null => {
     if (!url) return null;
-    return url;
+    if (url.startsWith('/') || url.startsWith('blob:')) return url;
+    if (url.endsWith('.mp4') || url.endsWith('.m3u8')) return url;
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return url;
+    return `/api/stream-embed?url=${encodeURIComponent(url)}`;
   };
 
   const activeEmbedSrc = getEmbedStreamUrl(activeStreamSrc);
