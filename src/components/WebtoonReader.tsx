@@ -65,7 +65,7 @@ export const WebtoonReader: React.FC<WebtoonReaderProps> = ({
   };
 
   return (
-    <div ref={containerRef} className="w-full flex flex-col items-center py-20 px-0 sm:px-4 min-h-screen">
+    <div ref={containerRef} className="w-full flex flex-col items-center pt-[calc(5rem+env(safe-area-inset-top,0px))] pb-[calc(6rem+env(safe-area-inset-bottom,0px))] px-0 sm:px-4 min-h-screen">
       <div className="w-full max-w-3xl flex flex-col items-center">
         {pages.map((page, idx) => {
           const attempts = failedAttempts[idx] || 0;
