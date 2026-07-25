@@ -37,8 +37,8 @@ function streamProxyPlugin() {
 
       let html = await response.text();
 
-      // Strip ad/tracking scripts from original HTML
-      html = html.replace(/<script[^>]*src=["'][^"']*(nekostream|statlytic|bodegashunlike|linkmansclate)[^"']*["'][^>]*><\/script>/gi, '');
+      // Strip anti-tamper and ad/tracking scripts from original HTML
+      html = html.replace(/<script[^>]*src=["'][^"']*(client|app\.main|nekostream|statlytic|bodegashunlike|linkmansclate)[^"']*["'][^>]*><\/script>/gi, '');
 
       const patchScript = `
         <base href="${origin}/" />
@@ -142,7 +142,7 @@ function streamProxyPlugin() {
               };
             } catch(e) {}
 
-            // 7. Intercept script creation to block ad scripts dynamically
+            // 7. Intercept script creation to block ad/tamper scripts dynamically
             try {
               var origCreateElement = document.createElement.bind(document);
               document.createElement = function(tagName, options) {
@@ -151,8 +151,8 @@ function streamProxyPlugin() {
                   var origSetAttribute = el.setAttribute.bind(el);
                   el.setAttribute = function(name, val) {
                     if (name === 'src' && typeof val === 'string') {
-                      if (val.includes('nekostream') || val.includes('linkmansclate') || val.includes('bodegashunlike')) {
-                        console.warn('[Proxy Patch] Blocked ad script:', val);
+                      if (val.includes('client') || val.includes('app.main') || val.includes('nekostream') || val.includes('linkmansclate') || val.includes('bodegashunlike')) {
+                        console.warn('[Proxy Patch] Blocked script:', val);
                         return;
                       }
                     }
@@ -160,6 +160,18 @@ function streamProxyPlugin() {
                   };
                 }
                 return el;
+              };
+            } catch(e) {}
+
+            // 8. Override window.open to block popups/redirects
+            try {
+              var origOpen = window.open;
+              window.open = function(url) {
+                if (url && (String(url).includes('comic.louiv.me') || String(url).includes('louiv.me') || String(url).includes('linkmansclate') || String(url).includes('bodegashunlike'))) {
+                  console.warn('[Proxy Patch] Blocked window.open to:', url);
+                  return null;
+                }
+                return origOpen ? origOpen.apply(this, arguments) : null;
               };
             } catch(e) {}
           })();
