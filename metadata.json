@@ -1,0 +1,6 @@
+{
+  "name": "LouiComic",
+  "description": "Web frontend baca komik modern LouiComic dengan Shinigami REST API, Supabase bookmark & history, Clerk auth, dan support Vercel deployment.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
