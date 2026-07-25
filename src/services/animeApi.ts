@@ -370,26 +370,19 @@ export async function fetchEpisodeDetailApi(episodeSlug: string): Promise<Episod
     }
   }
 
-  // If serverIds is missing, try looking up serverIds via /info & /episodes
+  // If serverIds is missing, try looking up serverIds directly via /episodes
   if (!serverIds && animeSlug) {
     try {
-      const infoRes = await fetch(`${LOUIV_ANIME_API_BASE}/info?id=${encodeURIComponent(animeSlug)}`, {
+      const epRes = await fetch(`${LOUIV_ANIME_API_BASE}/episodes/${encodeURIComponent(animeSlug)}`, {
         headers: { Accept: 'application/json' },
       });
-      if (infoRes.ok) {
-        const infoJson = await infoRes.json();
-        const aId = infoJson.results?.animeId || animeSlug;
-        const epRes = await fetch(`${LOUIV_ANIME_API_BASE}/episodes/${encodeURIComponent(aId)}`, {
-          headers: { Accept: 'application/json' },
-        });
-        if (epRes.ok) {
-          const epJson = await epRes.ok ? await epRes.json() : null;
-          const epList = epJson?.results?.episodes;
-          if (Array.isArray(epList)) {
-            const targetEp = epList.find((e: any) => e.episode_no === epNo) || epList[0];
-            if (targetEp?.server_ids) {
-              serverIds = targetEp.server_ids;
-            }
+      if (epRes.ok) {
+        const epJson = await epRes.json();
+        const epList = epJson?.results?.episodes;
+        if (Array.isArray(epList)) {
+          const targetEp = epList.find((e: any) => e.episode_no === epNo) || epList[0];
+          if (targetEp?.server_ids) {
+            serverIds = targetEp.server_ids;
           }
         }
       }
