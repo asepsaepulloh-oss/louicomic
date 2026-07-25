@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { BookOpen, Search, Heart, History, Flame, Clock, User, Menu, X, Film } from 'lucide-react';
+import { BookOpen, Search, Heart, History, Flame, Clock, User, Menu, X, Film, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { UserButton, SignInButton } from '@clerk/clerk-react';
 
 interface HeaderProps {
   currentTab: string;
@@ -20,7 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [searchInput, setSearchInput] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isSignedIn, isClerkConfigured, userName, openSignInModal } = useAuth();
+  const { isSignedIn, userName, userAvatar, openSignInModal, signOutUser } = useAuth();
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,16 +119,31 @@ export const Header: React.FC<HeaderProps> = ({
           {/* User Auth Buttons */}
           <div className="flex items-center gap-2">
             
-            {/* Clerk User Button or Guest / Masuk Button */}
+            {/* Firebase User Profile or Masuk Button */}
             <div className="flex items-center">
               {isSignedIn ? (
-                <UserButton
-                  appearance={{
-                    elements: {
-                      avatarBox: 'w-9 h-9 rounded-full border border-amber-500/40',
-                    },
-                  }}
-                />
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/60 shadow-sm">
+                    {userAvatar ? (
+                      <img src={userAvatar} alt={userName} className="w-6 h-6 rounded-full border border-amber-500/40 object-cover" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 font-bold text-xs flex items-center justify-center border border-amber-500/40">
+                        {userName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-xs font-semibold text-slate-200 max-w-[110px] truncate hidden sm:inline">
+                      {userName}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={signOutUser}
+                    className="p-2.5 min-h-[40px] min-w-[40px] rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all cursor-pointer flex items-center justify-center active:scale-95"
+                    title="Keluar / Logout"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={openSignInModal}
@@ -204,7 +218,7 @@ export const Header: React.FC<HeaderProps> = ({
                 );
               })}
 
-              {!isSignedIn && (
+              {!isSignedIn ? (
                 <button
                   onClick={() => {
                     openSignInModal();
@@ -213,7 +227,18 @@ export const Header: React.FC<HeaderProps> = ({
                   className="flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] rounded-xl text-sm font-bold text-slate-950 bg-amber-500 hover:bg-amber-400 col-span-2 shadow-lg transition-all cursor-pointer"
                 >
                   <User className="w-5 h-5 fill-slate-950" />
-                  <span>Masuk ke Akun / Konfigurasi Clerk</span>
+                  <span>Masuk ke Akun</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    signOutUser();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] rounded-xl text-sm font-bold text-rose-300 bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 col-span-2 transition-all cursor-pointer"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Keluar dari ({userName})</span>
                 </button>
               )}
             </div>
