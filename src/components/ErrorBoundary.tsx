@@ -1,9 +1,9 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RotateCcw, Key } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
-  fallback?: ReactNode;
+  fallback?: ReactNode | ((error: Error | null, reset: () => void) => ReactNode);
   onReset?: () => void;
 }
 
@@ -12,17 +12,20 @@ interface State {
   error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
-  public override state: State = {
-    hasError: false,
-    error: null,
-  };
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null,
+    };
+  }
 
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error caught by ErrorBoundary:', error, errorInfo);
   }
 
@@ -42,8 +45,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
     window.location.reload();
   };
 
-  public override render(): ReactNode {
+  public render(): ReactNode {
     if (this.state.hasError) {
+      if (typeof this.props.fallback === 'function') {
+        return this.props.fallback(this.state.error, this.handleReset);
+      }
+
       if (this.props.fallback) {
         return this.props.fallback;
       }
