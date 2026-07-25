@@ -35,10 +35,10 @@ async function startServer() {
 
       let html = await response.text();
 
-      // Strip anti-tamper and ad/tracking scripts from original HTML
-      html = html.replace(/<script[^>]*src=["'][^"']*(client|app\.main|nekostream|statlytic|bodegashunlike|linkmansclate)[^"']*["'][^>]*><\/script>/gi, '');
+      // Strip ad/tracking scripts from original HTML
+      html = html.replace(/<script[^>]*src=["'][^"']*(nekostream|statlytic|bodegashunlike|linkmansclate)[^"']*["'][^>]*><\/script>/gi, '');
 
-      // Patch script to override window.parent/window.top and document.domain before player scripts execute
+      // Patch script to override window.parent/window.top, document.referrer, and SandboxDetector before player scripts execute
       const patchScript = `
         <base href="${origin}/" />
         <script>
@@ -47,13 +47,13 @@ async function startServer() {
             try {
               Object.defineProperty(Document.prototype, 'referrer', {
                 get: function() { return 'https://animixplay.cz/'; },
-                configurable: true
+                configurable: false
               });
             } catch(e) {}
             try {
               Object.defineProperty(document, 'referrer', {
                 get: function() { return 'https://animixplay.cz/'; },
-                configurable: true
+                configurable: false
               });
             } catch(e) {}
 
@@ -61,50 +61,45 @@ async function startServer() {
             try {
               Object.defineProperty(Window.prototype, 'parent', {
                 get: function() { return this; },
-                configurable: true
+                configurable: false
               });
               Object.defineProperty(Window.prototype, 'top', {
                 get: function() { return this; },
-                configurable: true
+                configurable: false
               });
             } catch(e) {}
             try {
               Object.defineProperty(window, 'parent', {
                 get: function() { return window; },
-                configurable: true
+                configurable: false
               });
               Object.defineProperty(window, 'top', {
                 get: function() { return window; },
-                configurable: true
+                configurable: false
               });
             } catch(e) {}
 
-            // 3. Override document.domain
-            try {
-              var _d = 'animixplay.cz';
-              Object.defineProperty(document, 'domain', {
-                get: function() { return _d; },
-                set: function(v) { return v; },
-                configurable: true
-              });
-            } catch(e) {}
-
-            // 4. Neutralize SandboxDetector
-            window.SandboxDetector = {
-              detect: function(cb) {
-                if (typeof cb === 'function') cb(false);
-                return Promise.resolve(false);
-              },
+            // 3. Lock down SandboxDetector with immutable dummy object to prevent app.main.js anti-sandbox wipe
+            var dummySandbox = {
+              DEFAULT_MESSAGE: "",
+              isTopLevel: function() { return true; },
+              detect: function() { return Promise.resolve(false); },
               run: function(opts) {
                 if (opts && opts.onAllowed) try { opts.onAllowed(); } catch(err) {}
                 if (opts && opts.onResult) try { opts.onResult(false); } catch(err) {}
                 return Promise.resolve(false);
               },
-              isTopLevel: function() { return true; },
               showBlockMessage: function() {}
             };
+            try {
+              Object.defineProperty(window, 'SandboxDetector', {
+                get: function() { return dummySandbox; },
+                set: function() { /* ignore overwrite */ },
+                configurable: false
+              });
+            } catch(e) {}
 
-            // 5. Neutralize devtoolsDetector
+            // 4. Lock down devtoolsDetector
             var dummyDevTools = {
               addListener: function() {},
               removeListener: function() {},
@@ -117,11 +112,11 @@ async function startServer() {
               Object.defineProperty(window, 'devtoolsDetector', {
                 get: function() { return dummyDevTools; },
                 set: function() {},
-                configurable: true
+                configurable: false
               });
             } catch(e) {}
 
-            // 6. Block redirect calls to comic.louiv.me
+            // 5. Block redirect calls to comic.louiv.me / louiv.me
             try {
               var origReplace = window.location.replace.bind(window.location);
               var origAssign = window.location.assign.bind(window.location);
@@ -141,7 +136,7 @@ async function startServer() {
               };
             } catch(e) {}
 
-            // 7. Intercept script creation to block ad/tamper scripts dynamically
+            // 6. Intercept script creation to block ad scripts dynamically
             try {
               var origCreateElement = document.createElement.bind(document);
               document.createElement = function(tagName, options) {
@@ -150,8 +145,8 @@ async function startServer() {
                   var origSetAttribute = el.setAttribute.bind(el);
                   el.setAttribute = function(name, val) {
                     if (name === 'src' && typeof val === 'string') {
-                      if (val.includes('client') || val.includes('app.main') || val.includes('nekostream') || val.includes('linkmansclate') || val.includes('bodegashunlike')) {
-                        console.warn('[Proxy Patch] Blocked script:', val);
+                      if (val.includes('nekostream') || val.includes('linkmansclate') || val.includes('bodegashunlike')) {
+                        console.warn('[Proxy Patch] Blocked ad script:', val);
                         return;
                       }
                     }
@@ -162,7 +157,7 @@ async function startServer() {
               };
             } catch(e) {}
 
-            // 8. Override window.open to block popups/redirects
+            // 7. Override window.open to block popups/redirects
             try {
               var origOpen = window.open;
               window.open = function(url) {
@@ -170,7 +165,7 @@ async function startServer() {
                   console.warn('[Proxy Patch] Blocked window.open to:', url);
                   return null;
                 }
-                return origOpen ? origOpen.apply(this, arguments) : null;
+                return null;
               };
             } catch(e) {}
           })();
