@@ -11,6 +11,7 @@ import { ReaderControls } from './components/ReaderControls';
 import { WebtoonReader } from './components/WebtoonReader';
 import { SinglePageReader } from './components/SinglePageReader';
 import { AnimeSection } from './components/AnimeSection';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import {
   fetchPopularManga,
   fetchLatestManga,
@@ -996,7 +997,7 @@ function AppContent() {
         historyCount={history.length}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 lg:pb-8">
         {errorMsg && !selectedMangaId && (
           <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -1016,6 +1017,20 @@ function AppContent() {
       </main>
 
       <Footer />
+
+      {/* Touch-Friendly Bottom Navigation for Mobile */}
+      {!selectedChapterId && (
+        <MobileBottomNav
+          currentTab={currentTab}
+          onSelectTab={(tab) => {
+            setSelectedMangaId(null);
+            setSelectedChapterId(null);
+            setCurrentTab(tab);
+          }}
+          bookmarkCount={bookmarks.length}
+          historyCount={history.length}
+        />
+      )}
     </div>
   );
 }
