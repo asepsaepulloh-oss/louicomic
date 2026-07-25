@@ -78,7 +78,7 @@ export const WebtoonReader: React.FC<WebtoonReaderProps> = ({
           return (
             <div
               key={page.index || idx}
-              ref={(el) => (imageRefs.current[idx] = el)}
+              ref={(el) => { imageRefs.current[idx] = el; }}
               data-page-index={idx}
               className="relative w-full min-h-[300px] sm:min-h-[500px] flex items-center justify-center bg-slate-950 my-0 border-b border-slate-900/30"
             >
