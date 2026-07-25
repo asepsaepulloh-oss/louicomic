@@ -62,37 +62,38 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
     <div className="fixed top-0 inset-x-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 text-slate-100 shadow-2xl transition-all">
       
       {/* Top Header Bar */}
-      <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
         
         {/* Left: Back & Title */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={onBackToDetail}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
             title="Kembali ke Detail Komik"
+            aria-label="Kembali"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           
           <div className="min-w-0">
-            <h1 className="text-sm font-bold text-white truncate max-w-xs sm:max-w-md">
+            <h1 className="text-xs sm:text-sm font-bold text-white truncate max-w-[140px] sm:max-w-md">
               {mangaTitle}
             </h1>
-            <p className="text-xs text-amber-400 font-medium truncate">
+            <p className="text-[11px] text-amber-400 font-bold truncate">
               {currentChapterName}
             </p>
           </div>
         </div>
 
-        {/* Center: Chapter Switcher Dropdown */}
-        <div className="hidden md:flex items-center gap-2">
+        {/* Center: Chapter Switcher Dropdown (Visible on Desktop & Mobile!) */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             disabled={!prevChapter}
             onClick={() => prevChapter && onChangeChapter(prevChapter.url, prevChapter.name)}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-slate-800 text-slate-200"
+            className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-200 transition-colors cursor-pointer"
             title="Chapter Sebelumnya"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
 
           <select
@@ -101,7 +102,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               const selected = chapters.find((c) => c.url === e.target.value);
               if (selected) onChangeChapter(selected.url, selected.name);
             }}
-            className="bg-slate-900 text-xs font-semibold text-amber-300 border border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-500 max-w-[200px]"
+            className="bg-slate-900 text-xs font-bold text-amber-300 border border-slate-700 rounded-xl px-2.5 sm:px-3 py-2.5 min-h-[44px] focus:outline-none focus:border-amber-500 max-w-[130px] sm:max-w-[220px] cursor-pointer"
           >
             {chapters.map((ch) => (
               <option key={ch.url} value={ch.url}>
@@ -113,56 +114,56 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
           <button
             disabled={!nextChapter}
             onClick={() => nextChapter && onChangeChapter(nextChapter.url, nextChapter.name)}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-slate-800 text-slate-200"
+            className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-30 text-slate-950 font-bold transition-colors cursor-pointer"
             title="Chapter Selanjutnya"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-5 h-5" />
           </button>
         </div>
 
         {/* Right: Controls & Preferences */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           
           {/* Mode Switcher */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1">
             <button
               onClick={() => onChangeMode('webtoon')}
-              className={`p-1.5 rounded text-xs font-semibold flex items-center gap-1 ${
+              className={`px-2.5 py-2 min-h-[40px] rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
                 readerMode === 'webtoon' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
               }`}
               title="Mode Webtoon (Gulung Kebawah)"
             >
-              <LayoutList className="w-3.5 h-3.5" />
+              <LayoutList className="w-4 h-4" />
               <span className="hidden sm:inline">Webtoon</span>
             </button>
             <button
               onClick={() => onChangeMode('single')}
-              className={`p-1.5 rounded text-xs font-semibold flex items-center gap-1 ${
+              className={`px-2.5 py-2 min-h-[40px] rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
                 readerMode === 'single' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
               }`}
               title="Mode Per Halaman"
             >
-              <Layers className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Per Halaman</span>
+              <Layers className="w-4 h-4" />
+              <span className="hidden sm:inline">Halaman</span>
             </button>
           </div>
 
           {/* Background Color Selector */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1">
-            <Palette className="w-3.5 h-3.5 text-slate-400 ml-1" />
+          <div className="hidden sm:flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl p-1.5">
+            <Palette className="w-4 h-4 text-slate-400 ml-1" />
             <button
               onClick={() => onChangeBgColor('black')}
-              className={`w-4 h-4 rounded-full bg-black border ${bgColor === 'black' ? 'ring-2 ring-amber-400 border-white' : 'border-slate-700'}`}
+              className={`w-5 h-5 rounded-full bg-black border cursor-pointer ${bgColor === 'black' ? 'ring-2 ring-amber-400 border-white' : 'border-slate-700'}`}
               title="Latar Hitam"
             />
             <button
               onClick={() => onChangeBgColor('dark')}
-              className={`w-4 h-4 rounded-full bg-slate-900 border ${bgColor === 'dark' ? 'ring-2 ring-amber-400 border-white' : 'border-slate-700'}`}
+              className={`w-5 h-5 rounded-full bg-slate-900 border cursor-pointer ${bgColor === 'dark' ? 'ring-2 ring-amber-400 border-white' : 'border-slate-700'}`}
               title="Latar Slate"
             />
             <button
               onClick={() => onChangeBgColor('sepia')}
-              className={`w-4 h-4 rounded-full bg-[#2d261e] border ${bgColor === 'sepia' ? 'ring-2 ring-amber-400 border-white' : 'border-slate-700'}`}
+              className={`w-5 h-5 rounded-full bg-[#2d261e] border cursor-pointer ${bgColor === 'sepia' ? 'ring-2 ring-amber-400 border-white' : 'border-slate-700'}`}
               title="Latar Sepia"
             />
           </div>
@@ -171,7 +172,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
           {readerMode === 'webtoon' && (
             <button
               onClick={onToggleAutoScroll}
-              className={`p-2 rounded-lg border transition-colors ${
+              className={`p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${
                 autoScrollSpeed > 0
                   ? 'bg-amber-500 text-slate-950 border-amber-400'
                   : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
@@ -185,7 +186,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
           {/* Fullscreen Button */}
           <button
             onClick={onToggleFullscreen}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors"
+            className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
             title="Layar Penuh"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -194,43 +195,45 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
       </div>
 
       {/* Bottom Page Progress Bar */}
-      <div className="bg-slate-900/95 border-t border-slate-800/80 px-4 py-1.5 flex items-center justify-between text-xs text-slate-300">
-        <div className="flex items-center gap-2">
-          <span>Halaman</span>
+      <div className="bg-slate-900/95 border-t border-slate-800/80 px-3 sm:px-4 py-2 flex items-center justify-between text-xs text-slate-300 gap-2">
+        <div className="flex items-center gap-1.5 text-xs">
+          <span>Hal</span>
           <span className="font-bold text-amber-400">{currentPage}</span>
-          <span>dari</span>
+          <span>/</span>
           <span className="font-bold">{totalPages || 1}</span>
         </div>
 
         {/* Page Jump Slider */}
         {totalPages > 1 && (
-          <div className="flex items-center gap-3 flex-1 max-w-xs mx-4">
+          <div className="flex items-center gap-3 flex-1 max-w-xs mx-2">
             <input
               type="range"
               min={1}
               max={totalPages}
               value={currentPage}
               onChange={(e) => onJumpPage(parseInt(e.target.value, 10))}
-              className="w-full accent-amber-500 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
+              className="w-full accent-amber-500 bg-slate-800 h-2 rounded-lg cursor-pointer"
             />
           </div>
         )}
 
         {/* Navigation buttons for mobile view */}
-        <div className="flex md:hidden items-center gap-2">
+        <div className="flex items-center gap-2">
           <button
             disabled={!prevChapter}
             onClick={() => prevChapter && onChangeChapter(prevChapter.url, prevChapter.name)}
-            className="px-2 py-1 bg-slate-800 rounded text-[11px] disabled:opacity-40"
+            className="px-3 py-2 min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold disabled:opacity-40 flex items-center gap-1 cursor-pointer"
           >
-            ← Prev Ch
+            <ChevronLeft className="w-4 h-4 text-amber-400" />
+            <span>Prev</span>
           </button>
           <button
             disabled={!nextChapter}
             onClick={() => nextChapter && onChangeChapter(nextChapter.url, nextChapter.name)}
-            className="px-2 py-1 bg-amber-500 text-slate-950 font-bold rounded text-[11px] disabled:opacity-40"
+            className="px-3.5 py-2 min-h-[40px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs disabled:opacity-40 flex items-center gap-1 cursor-pointer shadow-md"
           >
-            Next Ch →
+            <span>Next</span>
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
