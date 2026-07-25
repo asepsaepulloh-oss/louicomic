@@ -188,12 +188,10 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
 
   const activeStreamSrc = getActiveStreamUrl();
 
-  // Convert stream URL into proxied embed URL to bypass sandbox/document.domain iframe restrictions
+  // Stream URL used directly for video / iframe player
   const getEmbedStreamUrl = (url: string | null): string | null => {
     if (!url) return null;
-    if (url.startsWith('/') || url.startsWith('blob:')) return url;
-    if (url.includes('youtube') || url.includes('youtu.be')) return url;
-    return `/api/stream-embed?url=${encodeURIComponent(url)}`;
+    return url;
   };
 
   const activeEmbedSrc = getEmbedStreamUrl(activeStreamSrc);
