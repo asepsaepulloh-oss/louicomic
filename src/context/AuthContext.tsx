@@ -1,6 +1,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import { ClerkProvider, useUser, SignIn, UserButton } from '@clerk/clerk-react';
-import { Key, User, X, CheckCircle2, ShieldCheck, Settings } from 'lucide-react';
+import { ClerkProvider, useUser, SignIn } from '@clerk/clerk-react';
+import { Key, User, X, CheckCircle2, ShieldCheck, Settings, AlertTriangle } from 'lucide-react';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 interface AuthContextType {
   userId: string;
@@ -126,34 +127,54 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const handleClearClerkKey = () => {
+    try {
+      localStorage.removeItem('clerk_pub_key');
+    } catch (e) {
+      console.error(e);
+    }
+    setActiveKey('');
+    setShowKeySettings(false);
+    setShowSignInModal(false);
+    window.location.reload();
+  };
+
   const isConfigured = Boolean(
     activeKey && activeKey.startsWith('pk_') && activeKey.length > 20
   );
 
+  const guestAuthValue = {
+    userId: 'guest',
+    userName: currentGuestName,
+    userEmail: null,
+    userAvatar: '',
+    isSignedIn: false,
+    isClerkConfigured: false,
+    openSignInModal: () => setShowSignInModal(true),
+    setCustomClerkKey: (key: string) => {
+      localStorage.setItem('clerk_pub_key', key);
+      setActiveKey(key);
+    },
+  };
+
   return (
     <>
       {isConfigured ? (
-        <ClerkProvider publishableKey={activeKey}>
-          <ClerkAuthInner onOpenSignInModal={() => setShowSignInModal(true)}>
-            {children}
-          </ClerkAuthInner>
-        </ClerkProvider>
-      ) : (
-        <AuthContext.Provider
-          value={{
-            userId: 'guest',
-            userName: currentGuestName,
-            userEmail: null,
-            userAvatar: '',
-            isSignedIn: false,
-            isClerkConfigured: false,
-            openSignInModal: () => setShowSignInModal(true),
-            setCustomClerkKey: (key: string) => {
-              localStorage.setItem('clerk_pub_key', key);
-              setActiveKey(key);
-            },
-          }}
+        <ErrorBoundary
+          fallback={
+            <AuthContext.Provider value={guestAuthValue}>
+              {children}
+            </AuthContext.Provider>
+          }
         >
+          <ClerkProvider publishableKey={activeKey}>
+            <ClerkAuthInner onOpenSignInModal={() => setShowSignInModal(true)}>
+              {children}
+            </ClerkAuthInner>
+          </ClerkProvider>
+        </ErrorBoundary>
+      ) : (
+        <AuthContext.Provider value={guestAuthValue}>
           {children}
         </AuthContext.Provider>
       )}
@@ -189,25 +210,56 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                   </button>
                 </div>
 
-                {/* Embedded Native Clerk Sign In Component */}
-                <div className="w-full flex justify-center text-slate-900 overflow-hidden rounded-xl">
-                  <SignIn
-                    routing="virtual"
-                    appearance={{
-                      elements: {
-                        card: 'bg-slate-950 border border-slate-800 shadow-none text-white',
-                        headerTitle: 'text-white',
-                        headerSubtitle: 'text-slate-400',
-                        socialButtonsBlockButton: 'bg-slate-800 text-white border-slate-700 hover:bg-slate-700',
-                        formFieldLabel: 'text-slate-300',
-                        formFieldInput: 'bg-slate-900 border-slate-700 text-white',
-                        formButtonPrimary: 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold',
-                        footerActionText: 'text-slate-400',
-                        footerActionLink: 'text-amber-400 hover:text-amber-300',
-                      },
-                    }}
-                  />
-                </div>
+                {/* Embedded Native Clerk Sign In Component with Error Boundary */}
+                <ErrorBoundary
+                  fallback={
+                    <div className="w-full space-y-4 py-2 text-center">
+                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs text-left space-y-1.5">
+                        <div className="flex items-center gap-2 font-bold text-white">
+                          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                          <span>Tidak Dapat Memuat Login Clerk</span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                          Clerk Key belum mendukung domain <code className="text-amber-400 font-mono">comic.louiv.me</code> atau terjadi kendala jaringan. Pastikan domain ini diizinkan di Clerk Dashboard.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <button
+                          onClick={() => setShowKeySettings(true)}
+                          className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer shadow-md transition-all"
+                        >
+                          Ubah / Masukkan Clerk Key Baru
+                        </button>
+                        <button
+                          onClick={handleClearClerkKey}
+                          className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 cursor-pointer transition-all"
+                        >
+                          Reset & Gunakan Mode Tamu
+                        </button>
+                      </div>
+                    </div>
+                  }
+                >
+                  <div className="w-full flex justify-center text-slate-900 overflow-hidden rounded-xl min-h-[320px]">
+                    <SignIn
+                      routing="virtual"
+                      appearance={{
+                        elements: {
+                          card: 'bg-slate-950 border border-slate-800 shadow-none text-white w-full',
+                          headerTitle: 'text-white',
+                          headerSubtitle: 'text-slate-400',
+                          socialButtonsBlockButton: 'bg-slate-800 text-white border-slate-700 hover:bg-slate-700',
+                          formFieldLabel: 'text-slate-300',
+                          formFieldInput: 'bg-slate-900 border-slate-700 text-white',
+                          formButtonPrimary: 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold',
+                          footerActionText: 'text-slate-400',
+                          footerActionLink: 'text-amber-400 hover:text-amber-300',
+                        },
+                      }}
+                    />
+                  </div>
+                </ErrorBoundary>
               </div>
             ) : (
               <div className="space-y-5">
@@ -216,8 +268,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     <ShieldCheck className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white">Konfigurasi Clerk Auth</h3>
-                    <p className="text-xs text-slate-400">Hubungkan Clerk Publishable Key atau Lanjut Guest Mode</p>
+                    <h3 className="text-base font-bold text-white">Pengaturan Akun / Mode Masuk</h3>
+                    <p className="text-xs text-slate-400">Pilih Mode Tamu atau Konfigurasi Clerk Key</p>
                   </div>
                 </div>
 
@@ -228,13 +280,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                   </div>
                 ) : (
                   <div className="space-y-4 text-xs">
+                    <form onSubmit={handleSaveGuestName} className="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                      <label className="block font-bold text-slate-200 flex items-center gap-1.5">
+                        <User className="w-4 h-4 text-amber-400" />
+                        <span>1. Mode Tamu (Tanpa Akun)</span>
+                      </label>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Baca komik & anime secara langsung. Bookmark & riwayat otomatis tersimpan di browser kamu.
+                      </p>
+                      <input
+                        type="text"
+                        placeholder="Nama tampilan (misal: Pembaca Loui)"
+                        value={guestNameInput}
+                        onChange={(e) => setGuestNameInput(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                      />
+                      <button
+                        type="submit"
+                        className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-all cursor-pointer shadow-md"
+                      >
+                        Masuk Mode Tamu
+                      </button>
+                    </form>
+
                     <form onSubmit={handleSaveKey} className="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
                       <label className="block font-bold text-slate-200 flex items-center gap-1.5">
                         <Key className="w-4 h-4 text-amber-400" />
-                        <span>Clerk Publishable Key</span>
+                        <span>2. Hubungkan Clerk Publishable Key</span>
                       </label>
                       <p className="text-[11px] text-slate-400 leading-relaxed">
-                        Tempelkan Publishable Key (<code className="text-amber-400 font-mono">pk_test_...</code> / <code className="text-amber-400 font-mono">pk_live_...</code>) dari <a href="https://dashboard.clerk.com" target="_blank" rel="noreferrer" className="text-amber-400 underline">Clerk Dashboard</a>:
+                        Untuk sinkronisasi login akun antar-perangkat. Masukkan Publishable Key (<code className="text-amber-400 font-mono">pk_test_...</code> / <code className="text-amber-400 font-mono">pk_live_...</code>):
                       </p>
                       <input
                         type="text"
@@ -245,43 +320,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                       />
                       <button
                         type="submit"
-                        className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold transition-colors cursor-pointer"
-                      >
-                        Simpan & Hubungkan
-                      </button>
-                    </form>
-
-                    <form onSubmit={handleSaveGuestName} className="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
-                      <label className="block font-bold text-slate-200 flex items-center gap-1.5">
-                        <User className="w-4 h-4 text-amber-400" />
-                        <span>Mode Tamu (Tanpa Login)</span>
-                      </label>
-                      <p className="text-[11px] text-slate-400">
-                        Kamu dapat membaca komik & anime, menyimpan bookmark secara lokal tanpa akun.
-                      </p>
-                      <input
-                        type="text"
-                        placeholder="Nama kamu (misal: Pembaca Loui)"
-                        value={guestNameInput}
-                        onChange={(e) => setGuestNameInput(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                      />
-                      <button
-                        type="submit"
                         className="w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold border border-slate-700 transition-colors cursor-pointer"
                       >
-                        Simpan Profil Tamu
+                        Simpan Key & Hubungkan
                       </button>
                     </form>
 
                     {isConfigured && (
-                      <button
-                        type="button"
-                        onClick={() => setShowKeySettings(false)}
-                        className="w-full text-center text-xs text-amber-400 hover:underline pt-1 cursor-pointer"
-                      >
-                        &larr; Kembali ke Tampilan Login Clerk
-                      </button>
+                      <div className="flex items-center justify-between pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowKeySettings(false)}
+                          className="text-xs text-amber-400 hover:underline cursor-pointer"
+                        >
+                          &larr; Kembali ke Form Login Clerk
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleClearClerkKey}
+                          className="text-xs text-rose-400 hover:underline cursor-pointer"
+                        >
+                          Reset / Hapus Key
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -293,5 +354,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     </>
   );
 };
+
 
 
