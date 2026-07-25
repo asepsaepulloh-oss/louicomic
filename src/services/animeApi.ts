@@ -1,4 +1,4 @@
-import { AnimeItem, AnimeDetailData, AnimeEpisodeItem, AnimeBookmarkItem, AnimeWatchHistoryItem } from '../types/anime';
+import { AnimeItem, AnimeDetailData, AnimeEpisodeItem, AnimeBookmarkItem, AnimeWatchHistoryItem, EpisodeDetailData } from '../types/anime';
 
 const ANIME_API_BASE = 'https://api.louiv.me/api';
 
@@ -188,6 +188,69 @@ export async function fetchAnimeDetailApi(item: AnimeItem): Promise<AnimeDetailD
     genres: item.genres || [],
     episodes: generateEpisodesFromTitle(item),
   };
+}
+
+/**
+ * Fetches episode details including stream URL, mirrors, and download links
+ */
+export async function fetchEpisodeDetailApi(episodeSlug: string): Promise<EpisodeDetailData | null> {
+  const url = `${ANIME_API_BASE}/episode/${episodeSlug}`;
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP error ${res.status}`);
+    }
+    const json = await res.json();
+    if (json.ok && json.data) {
+      return json.data as EpisodeDetailData;
+    }
+    if (json.stream_url || json.mirrors || json.downloads || json.title) {
+      return json as EpisodeDetailData;
+    }
+    return null;
+  } catch (err) {
+    console.warn(`Episode detail API error for "${episodeSlug}":`, err);
+    return null;
+  }
+}
+
+/**
+ * Helper to extract playable iframe source from data_content or URL
+ */
+export function extractStreamSrc(dataContentOrUrl: string | null | undefined): string | null {
+  if (!dataContentOrUrl) return null;
+  const str = dataContentOrUrl.trim();
+
+  // If it's already an HTTP/HTTPS link
+  if (str.startsWith('http://') || str.startsWith('https://')) {
+    return str;
+  }
+
+  // If it contains <iframe ... src="..." ...>
+  const srcMatch = str.match(/src=["']([^"']+)["']/i);
+  if (srcMatch && srcMatch[1]) {
+    return srcMatch[1];
+  }
+
+  // Try decoding base64 if it looks like base64
+  if (!str.includes('<') && str.length > 20 && !str.includes(' ')) {
+    try {
+      const decoded = atob(str);
+      const decodedSrcMatch = decoded.match(/src=["']([^"']+)["']/i);
+      if (decodedSrcMatch && decodedSrcMatch[1]) {
+        return decodedSrcMatch[1];
+      }
+      if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
+        return decoded;
+      }
+    } catch {
+      // Not base64
+    }
+  }
+
+  return null;
 }
 
 // LOCAL STORAGE HELPERS FOR ANIME BOOKMARKS & HISTORY
