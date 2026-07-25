@@ -27,6 +27,7 @@ import {
   removeAnimeBookmark,
   saveAnimeHistory,
 } from '../services/animeApi';
+import { AnimeVideoPlayer } from './AnimeVideoPlayer';
 
 interface AnimePlayerModalProps {
   anime: AnimeItem | null;
@@ -248,45 +249,20 @@ export const AnimePlayerModal: React.FC<AnimePlayerModalProps> = ({ anime, onClo
         {/* Modal Scroll Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Main Video Player Section */}
-          <div className="relative aspect-video w-full bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-inner group">
+          <div className="relative w-full bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-inner group">
             {loading || loadingEpisode ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-3 bg-slate-950">
+              <div className="aspect-video w-full flex flex-col items-center justify-center text-slate-400 gap-3 bg-slate-950">
                 <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
                 <p className="text-xs font-medium animate-pulse">Memuat Video Stream Episode...</p>
               </div>
-            ) : isPlaying ? (
-              <div className="relative w-full h-full bg-black group">
-                {activeStreamSrc ? (
-                  activeStreamSrc.endsWith('.mp4') || activeStreamSrc.endsWith('.m3u8') ? (
-                    <video
-                      key={activeStreamSrc}
-                      src={activeStreamSrc}
-                      poster={anime.image_url}
-                      controls
-                      autoPlay
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <iframe
-                      key={activeEmbedSrc || activeStreamSrc}
-                      src={activeEmbedSrc || activeStreamSrc}
-                      title={selectedEpisode?.title || anime.title}
-                      className="w-full h-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                      allowFullScreen
-                      referrerPolicy="no-referrer"
-                    />
-                  )
-                ) : (
-                  <iframe
-                    src={`https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&modestbranding=1&rel=0`}
-                    title={anime.title}
-                    className="w-full h-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    referrerPolicy="no-referrer"
-                  />
-                )}
+            ) : isPlaying && selectedEpisode ? (
+              <div className="relative w-full bg-black">
+                <AnimeVideoPlayer
+                  episodeId={selectedEpisode.slug}
+                  animeUrlId={anime.slug}
+                  reso={selectedMirrorQuality}
+                  onResolutionChange={(r) => setSelectedMirrorQuality(r)}
+                />
 
                 {/* Top overlay player controls */}
                 <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
