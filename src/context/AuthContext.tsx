@@ -1,6 +1,6 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import { ClerkProvider, useUser, SignIn } from '@clerk/clerk-react';
-import { Key, User, X, CheckCircle2, ShieldCheck, Settings, AlertTriangle } from 'lucide-react';
+import { ClerkProvider, useUser, useClerk, SignIn } from '@clerk/clerk-react';
+import { Key, User, X, CheckCircle2, ShieldCheck, Settings, AlertTriangle, Loader2 } from 'lucide-react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
 interface AuthContextType {
@@ -41,6 +41,41 @@ export function getStoredClerkKey(): string {
     // localStorage unavailable
   }
   return '';
+}
+
+/**
+ * Component that safely renders Clerk SignIn after clerk-js has loaded
+ */
+function ClerkSignInContent() {
+  const clerk = useClerk();
+
+  if (!clerk || !clerk.loaded) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center p-12 space-y-3 min-h-[300px]">
+        <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+        <p className="text-xs text-slate-300 font-medium">Menghubungkan ke layanan autentikasi Clerk...</p>
+      </div>
+    );
+  }
+
+  return (
+    <SignIn
+      routing="hash"
+      appearance={{
+        elements: {
+          card: 'bg-slate-950 border border-slate-800 shadow-none text-white w-full',
+          headerTitle: 'text-white',
+          headerSubtitle: 'text-slate-400',
+          socialButtonsBlockButton: 'bg-slate-800 text-white border-slate-700 hover:bg-slate-700',
+          formFieldLabel: 'text-slate-300',
+          formFieldInput: 'bg-slate-900 border-slate-700 text-white',
+          formButtonPrimary: 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold',
+          footerActionText: 'text-slate-400',
+          footerActionLink: 'text-amber-400 hover:text-amber-300',
+        },
+      }}
+    />
+  );
 }
 
 /**
@@ -212,36 +247,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
                 {/* Embedded Native Clerk Sign In Component with Error Boundary */}
                 <ErrorBoundary
-                  fallback={
+                  fallback={(err, reset) => (
                     <div className="w-full space-y-4 py-2 text-center">
                       <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs text-left space-y-2">
                         <div className="flex items-center gap-2 font-bold text-white">
                           <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                          <span>Pemeriksaan Origin & Key Clerk</span>
+                          <span>Detail Kendala Login Clerk</span>
                         </div>
                         
+                        {err?.message ? (
+                          <p className="text-[11px] font-mono text-rose-300 bg-slate-950 p-2 rounded border border-slate-800 break-all">
+                            {err.message}
+                          </p>
+                        ) : null}
+
                         {activeKey.startsWith('pk_test_') ? (
                           <p className="text-[11px] text-slate-300 leading-relaxed">
                             Kamu menggunakan <code className="text-amber-400 font-mono px-1 py-0.5 rounded bg-slate-900">pk_test_...</code> (Test Key). Kunci Test Clerk <strong>tidak mendukung</strong> domain custom seperti <code className="text-amber-400 font-mono">{window.location.hostname}</code>. Silakan ganti ke <strong>Production Key (<code className="text-amber-400 font-mono">pk_live_...</code>)</strong>.
                           </p>
-                        ) : activeKey.startsWith('pk_live_') ? (
-                          <p className="text-[11px] text-slate-300 leading-relaxed">
-                            Kamu menggunakan <code className="text-amber-400 font-mono px-1 py-0.5 rounded bg-slate-900">pk_live_...</code> (Production Key). Kunci ini terikat pada domain <strong>comic.louiv.me</strong>. Jika kamu membuka dari URL Preview/APK (<code className="text-amber-400 font-mono">{window.location.hostname}</code>), Clerk memblokir origin ini. Buka di <strong>https://comic.louiv.me</strong> atau gunakan Mode Tamu.
-                          </p>
                         ) : (
                           <p className="text-[11px] text-slate-300 leading-relaxed">
-                            Domain <code className="text-amber-400 font-mono px-1 py-0.5 rounded bg-slate-900">{window.location.hostname}</code> belum terdaftar di Clerk Dashboard atau kunci Publishable Key berbeda origin.
+                            Pastikan domain <code className="text-amber-400 font-mono">{window.location.hostname}</code> sudah terdaftar di Clerk Dashboard atau gunakan Mode Tamu.
                           </p>
                         )}
 
                         <div className="text-[10px] text-slate-400 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 space-y-1 font-mono">
-                          <p className="text-amber-300/90 font-sans font-semibold">💡 Solusi Cepat:</p>
-                          <p>1. Di domain <strong>comic.louiv.me</strong>: Gunakan key <strong>pk_live_...</strong></p>
-                          <p>2. Di URL preview / APK: Gunakan <strong>Mode Tamu</strong> atau key <strong>pk_test_...</strong> di localhost</p>
+                          <p className="text-amber-300/90 font-sans font-semibold">💡 Opsi Tambahan:</p>
+                          <p>• Kamu dapat menekan &quot;Lanjut dengan Mode Tamu&quot; di bawah untuk langsung menggunakan aplikasi.</p>
                         </div>
                       </div>
 
                       <div className="space-y-2 pt-1">
+                        <button
+                          onClick={reset}
+                          className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 cursor-pointer transition-all"
+                        >
+                          Coba Muat Ulang Form Login
+                        </button>
+
                         <button
                           onClick={() => setShowSignInModal(false)}
                           className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold text-xs cursor-pointer shadow-lg shadow-amber-500/10 transition-all flex items-center justify-center gap-2"
@@ -268,25 +311,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         </div>
                       </div>
                     </div>
-                  }
+                  )}
                 >
-                  <div className="w-full flex justify-center text-slate-900 overflow-hidden rounded-xl min-h-[320px]">
-                    <SignIn
-                      routing="virtual"
-                      appearance={{
-                        elements: {
-                          card: 'bg-slate-950 border border-slate-800 shadow-none text-white w-full',
-                          headerTitle: 'text-white',
-                          headerSubtitle: 'text-slate-400',
-                          socialButtonsBlockButton: 'bg-slate-800 text-white border-slate-700 hover:bg-slate-700',
-                          formFieldLabel: 'text-slate-300',
-                          formFieldInput: 'bg-slate-900 border-slate-700 text-white',
-                          formButtonPrimary: 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold',
-                          footerActionText: 'text-slate-400',
-                          footerActionLink: 'text-amber-400 hover:text-amber-300',
-                        },
-                      }}
-                    />
+                  <div className="w-full flex justify-center text-slate-900 overflow-hidden rounded-xl min-h-[300px]">
+                    <ClerkSignInContent />
                   </div>
                 </ErrorBoundary>
               </div>
