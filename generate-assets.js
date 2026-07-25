@@ -23,8 +23,16 @@ async function generate() {
     .toFile(path.join(assetsDir, 'icon-only.png'));
 
   console.log('Generating 1024x1024 icon-foreground.png...');
-  await sharp(svgBuffer)
-    .resize(1024, 1024)
+  const foregroundLogo = await sharp(svgBuffer).resize(660, 660).toBuffer();
+  await sharp({
+    create: {
+      width: 1024,
+      height: 1024,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    }
+  })
+    .composite([{ input: foregroundLogo, gravity: 'center' }])
     .png()
     .toFile(path.join(assetsDir, 'icon-foreground.png'));
 
