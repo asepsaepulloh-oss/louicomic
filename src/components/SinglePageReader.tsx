@@ -62,7 +62,7 @@ export const SinglePageReader: React.FC<SinglePageReaderProps> = ({
   const hasFailed = imgAttempt >= 2;
 
   return (
-    <div className="w-full min-h-screen pt-24 pb-16 flex flex-col items-center justify-between px-4">
+    <div className="w-full min-h-screen pt-[calc(5rem+env(safe-area-inset-top,0px))] pb-[calc(6rem+env(safe-area-inset-bottom,0px))] flex flex-col items-center justify-between px-4">
       
       {/* Zoom Toolbar */}
       <div className="flex items-center gap-2 mb-3 bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-800 text-xs text-slate-300">
