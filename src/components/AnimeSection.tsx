@@ -311,7 +311,7 @@ export const AnimeSection: React.FC<AnimeSectionProps> = ({ initialSearchQuery }
           {loading ? (
             <div className="py-16 text-center space-y-3">
               <div className="w-10 h-10 mx-auto border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs text-slate-400 font-medium">Mencari anime dari REST API api.louiv.me...</p>
+              <p className="text-xs text-slate-400 font-medium">Memuat anime dari REST API (api.louiv.me/api)...</p>
             </div>
           ) : filteredAnimeList.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
