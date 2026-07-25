@@ -217,16 +217,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                       <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs text-left space-y-2">
                         <div className="flex items-center gap-2 font-bold text-white">
                           <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                          <span>Tidak Dapat Memuat Login Clerk</span>
+                          <span>Pemeriksaan Origin & Key Clerk</span>
                         </div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed">
-                          Domain <code className="text-amber-400 font-mono px-1 py-0.5 rounded bg-slate-900">{window.location.hostname}</code> belum terdaftar di Clerk Dashboard atau kunci Publishable Key berbeda origin.
-                        </p>
-                        <div className="text-[10px] text-slate-400 bg-slate-950 p-2 rounded-lg border border-slate-800/80 space-y-1 font-mono">
-                          <p className="text-amber-300/90 font-sans font-semibold">💡 Cara Mengizinkan Domain di Clerk:</p>
-                          <p>1. Buka dashboard.clerk.com</p>
-                          <p>2. Pilih proyek &amp; masuk ke <strong>Domains / Allowed Origins</strong></p>
-                          <p>3. Tambahkan <strong>{window.location.origin}</strong></p>
+                        
+                        {activeKey.startsWith('pk_test_') ? (
+                          <p className="text-[11px] text-slate-300 leading-relaxed">
+                            Kamu menggunakan <code className="text-amber-400 font-mono px-1 py-0.5 rounded bg-slate-900">pk_test_...</code> (Test Key). Kunci Test Clerk <strong>tidak mendukung</strong> domain custom seperti <code className="text-amber-400 font-mono">{window.location.hostname}</code>. Silakan ganti ke <strong>Production Key (<code className="text-amber-400 font-mono">pk_live_...</code>)</strong>.
+                          </p>
+                        ) : activeKey.startsWith('pk_live_') ? (
+                          <p className="text-[11px] text-slate-300 leading-relaxed">
+                            Kamu menggunakan <code className="text-amber-400 font-mono px-1 py-0.5 rounded bg-slate-900">pk_live_...</code> (Production Key). Kunci ini terikat pada domain <strong>comic.louiv.me</strong>. Jika kamu membuka dari URL Preview/APK (<code className="text-amber-400 font-mono">{window.location.hostname}</code>), Clerk memblokir origin ini. Buka di <strong>https://comic.louiv.me</strong> atau gunakan Mode Tamu.
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-slate-300 leading-relaxed">
+                            Domain <code className="text-amber-400 font-mono px-1 py-0.5 rounded bg-slate-900">{window.location.hostname}</code> belum terdaftar di Clerk Dashboard atau kunci Publishable Key berbeda origin.
+                          </p>
+                        )}
+
+                        <div className="text-[10px] text-slate-400 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 space-y-1 font-mono">
+                          <p className="text-amber-300/90 font-sans font-semibold">💡 Solusi Cepat:</p>
+                          <p>1. Di domain <strong>comic.louiv.me</strong>: Gunakan key <strong>pk_live_...</strong></p>
+                          <p>2. Di URL preview / APK: Gunakan <strong>Mode Tamu</strong> atau key <strong>pk_test_...</strong> di localhost</p>
                         </div>
                       </div>
 
